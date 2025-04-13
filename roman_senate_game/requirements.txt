@@ -1,0 +1,8 @@
+# Required dependencies
+openai>=1.0.0,<2.0.0
+typer>=0.9.0
+rich>=13.0.0  # Required for UI components
+python-dotenv>=1.0.0
+setuptools>=69.0.0  # Required for pkg_resources
+tiktoken>=0.5.0  # Required for token counting
+crewai>=0.11.0,<0.12.0  # Required for AI functionality
