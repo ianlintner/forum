@@ -42,18 +42,6 @@ def call_openai_api(prompt, model="gpt-4", temperature=0.7, max_tokens=1000):
     Returns:
         str: The model's response text or a mock response if API is unavailable
     """
-    if not openai_available:
-        # Return mock response when OpenAI is unavailable
-        mock_responses = [
-            "I propose we increase funding for the aqueduct project.",
-            "The Senate should consider the needs of the plebeians before making a decision.",
-            "My fellow senators, I must oppose this measure on principle.",
-            "Let us consider the historical precedent before we vote.",
-        ]
-        import random
-
-        return random.choice(mock_responses)
-
     try:
         response = openai.chat.completions.create(
             model=model,

@@ -168,6 +168,15 @@ def conduct_debate(topic: str, senators_list: List[Dict], rounds: int = 3):
     console.print(Panel(f"[bold cyan]SENATE DEBATE: {topic}[/]", expand=False))
 
     debate_summary = []
+    
+    # Generate faction stances for consistency
+    faction_stances = {
+        "Optimates": random.choice(["oppose", "oppose", "neutral"]),
+        "Populares": random.choice(["support", "support", "neutral"]),
+        "Military": random.choice(["support", "oppose", "neutral"]),
+        "Religious": random.choice(["oppose", "neutral", "support"]),
+        "Merchant": random.choice(["support", "neutral", "oppose"])
+    }
 
     for round_num in range(1, rounds + 1):
         console.print(f"\n[bold blue]Round {round_num} of Debate[/]")
@@ -176,7 +185,7 @@ def conduct_debate(topic: str, senators_list: List[Dict], rounds: int = 3):
         speakers = random.sample(senators_list, min(3, len(senators_list)))
 
         for senator in speakers:
-            # Simulate thinking and speaking
+            # Simulate thinking and speech preparation
             with Progress(
                 SpinnerColumn(),
                 TextColumn(
@@ -189,23 +198,20 @@ def conduct_debate(topic: str, senators_list: List[Dict], rounds: int = 3):
                 time.sleep(1 + random.random())
                 progress.update(task, completed=1)
 
-            # Generate senator's argument
-            argument_types = ["proposes", "opposes", "questions", "amends"]
-            argument_action = random.choice(argument_types)
+            # Generate senator's AI speech
+            speech = debate.generate_speech(senator, topic, faction_stances)
+            
+            # Display the speech in an immersive format with position summary
+            debate.display_speech(senator, speech, topic)
+            
+            # Extract argument from speech for scoring
+            argument = speech["full_text"]
 
-            argument = f"{senator['name']} {argument_action} the motion regarding {topic}, citing {random.choice(['historical precedent', 'economic concerns', 'military necessity', 'public opinion', 'religious implications'])}."
-
-            # Display the argument
-            utils.format_text(
-                f"{senator['name']} ({senator['faction']})", style="bold cyan"
-            )
-            utils.format_text(argument, as_panel=True)
-
-            # Score the argument
+            # Score the speech
             score = utils.score_argument(argument, topic)
 
             # Show the score
-            score_table = Table(title="Argument Assessment")
+            score_table = Table(title="Speech Assessment")
             score_table.add_column("Criterion", style="cyan")
             score_table.add_column("Score", justify="right")
 
@@ -218,13 +224,14 @@ def conduct_debate(topic: str, senators_list: List[Dict], rounds: int = 3):
             score_table.add_row("Overall", f"[bold]{score['total']:.2f}[/]")
             console.print(score_table)
 
-            # Record the argument
+            # Record the speech data
             debate_summary.append(
                 {
                     "round": round_num,
                     "senator": senator["name"],
                     "faction": senator["faction"],
-                    "argument": argument,
+                    "speech": speech["full_text"],
+                    "stance": speech["stance"],
                     "score": score["total"],
                 }
             )
@@ -243,6 +250,17 @@ def conduct_vote(topic: str, senators_list: List[Dict], debate_summary=None):
     votes = {"for": 0, "against": 0, "abstain": 0}
     voting_record = []
     
+    # Create a map of senator names to their debate stance
+    debate_stances = {}
+    if debate_summary:
+        # Group by senator name and take the last stance (most recent)
+        senator_speeches = {}
+        for speech in debate_summary:
+            senator_speeches[speech["senator"]] = speech
+        
+        for senator_name, speech in senator_speeches.items():
+            debate_stances[senator_name] = speech["stance"]
+    
     with Progress(
         SpinnerColumn(),
         TextColumn("[bold]Senators are casting their votes...[/]"),
@@ -251,12 +269,14 @@ def conduct_vote(topic: str, senators_list: List[Dict], debate_summary=None):
         task = progress.add_task("Voting...", total=len(senators_list))
 
         for senator in senators_list:
-            process_senator_vote(senator, votes, voting_record)
+            # Pass the senator's debate stance if available
+            stance = debate_stances.get(senator["name"], None)
+            process_senator_vote(senator, votes, voting_record, stance)
             progress.update(task, advance=1)
             time.sleep(0.3 + random.random() * 0.5)
 
-    # Display voting results
-    console.print("\n[bold yellow]Voting Results:[/]")
+    # Display voting results summary
+    console.print("\n[bold yellow]Voting Results Summary:[/]")
 
     results_table = Table()
     results_table.add_column("Option", style="cyan")
@@ -270,6 +290,66 @@ def conduct_vote(topic: str, senators_list: List[Dict], debate_summary=None):
         results_table.add_row(option.title(), str(count), f"{percentage:.1f}%")
 
     console.print(results_table)
+
+    # Display detailed voting breakdown
+    console.print("\n[bold yellow]Detailed Voting Breakdown:[/]")
+    
+    detailed_table = Table(title=f"Vote on: {topic}")
+    detailed_table.add_column("Senator", style="cyan")
+    detailed_table.add_column("Faction", style="magenta")
+    detailed_table.add_column("Debate Stance", justify="center")
+    detailed_table.add_column("Final Vote", justify="center")
+    detailed_table.add_column("Swayed", justify="center")
+    
+    # Map stances to votes for comparison
+    stance_to_vote = {
+        "support": "for",
+        "oppose": "against",
+        "neutral": None  # Neutral could be any vote
+    }
+    
+    # Sort voting record by faction then senator name
+    sorted_record = sorted(voting_record, key=lambda x: (x["faction"], x["senator"]))
+    
+    for record in sorted_record:
+        senator_name = record["senator"]
+        stance = debate_stances.get(senator_name, "unknown")
+        vote = record["vote"]
+        
+        # Determine if senator was swayed
+        expected_vote = stance_to_vote.get(stance, None)
+        swayed = ""
+        
+        if expected_vote and vote != expected_vote:
+            swayed = "[bold yellow]*[/]"
+        elif stance == "neutral" and vote != "abstain":
+            swayed = "[bold blue]†[/]"
+            
+        # Format the stance and vote with colors
+        stance_format = {
+            "support": "[green]Support[/]",
+            "oppose": "[red]Oppose[/]",
+            "neutral": "[yellow]Neutral[/]",
+            "unknown": "[dim]Unknown[/]"
+        }
+        
+        vote_format = {
+            "for": "[green]For[/]",
+            "against": "[red]Against[/]",
+            "abstain": "[yellow]Abstain[/]"
+        }
+        
+        detailed_table.add_row(
+            record["senator"],
+            record["faction"],
+            stance_format.get(stance, f"[dim]{stance}[/]"),
+            vote_format.get(vote, f"[dim]{vote}[/]"),
+            swayed
+        )
+    
+    console.print(detailed_table)
+    console.print("[bold yellow]*[/] Senator voted differently than their debate stance")
+    console.print("[bold blue]†[/] Senator with neutral stance made a definitive vote")
 
     # Determine outcome
     if votes["for"] > votes["against"]:
@@ -292,30 +372,61 @@ def conduct_vote(topic: str, senators_list: List[Dict], debate_summary=None):
         "votes": votes,
         "outcome": outcome,
         "voting_record": voting_record,
+        "debate_stances": debate_stances
     }
     game_state.voting_results.append(result)
 
     return result
-def process_senator_vote(senator, votes, voting_record):
-    """Helper function to process a senator's vote."""
+def process_senator_vote(senator, votes, voting_record, debate_stance=None):
+    """
+    Helper function to process a senator's vote.
+    
+    Args:
+        senator: Senator information
+        votes: Counter to update with vote
+        voting_record: List to append vote details
+        debate_stance: Optional stance from debate ("support", "oppose", "neutral")
+    """
     vote_options = ["for", "against", "abstain"]
-    weights = [0.5, 0.4, 0.1]  # Biased slightly toward approval
-
+    weights = [0.5, 0.4, 0.1]  # Default weights
+    
     # Modify weights based on faction
     if senator["faction"] == "Optimates":
         weights = [0.4, 0.5, 0.1]  # More conservative
     elif senator["faction"] == "Populares":
         weights = [0.6, 0.3, 0.1]  # More progressive
-
+    
+    # Factor in debate stance if available
+    if debate_stance:
+        # Strongly influence vote by debate stance (80% correlation)
+        if debate_stance == "support":
+            weights = [0.8, 0.15, 0.05]  # Heavily favor "for" vote
+        elif debate_stance == "oppose":
+            weights = [0.15, 0.8, 0.05]  # Heavily favor "against" vote
+        elif debate_stance == "neutral":
+            weights = [0.45, 0.45, 0.1]  # More balanced between for/against
+            
+        # Modify a bit based on faction and loyalty
+        loyalty = senator["traits"]["loyalty"]
+        if debate_stance == "support" and senator["faction"] == "Optimates":
+            # Optimates slightly more likely to deviate from support
+            weights[0] -= (1 - loyalty) * 0.2
+            weights[1] += (1 - loyalty) * 0.2
+        elif debate_stance == "oppose" and senator["faction"] == "Populares":
+            # Populares slightly more likely to deviate from opposition
+            weights[0] += (1 - loyalty) * 0.2
+            weights[1] -= (1 - loyalty) * 0.2
+    
     vote = random.choices(vote_options, weights=weights)[0]
     votes[vote] += 1
-
+    
     voting_record.append(
         {
             "senator": senator["name"],
             "faction": senator["faction"],
             "vote": vote,
             "influence": senator["influence"],
+            "debate_stance": debate_stance
         }
     )
 
