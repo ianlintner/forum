@@ -11,6 +11,7 @@ The speech generation framework transforms basic debate topics into fully-realiz
 - **Latin Integration**: Appropriate Latin terminology, phrases, and expressions
 - **Personality-Driven Variation**: Speech styles based on senator archetypes and traits
 - **Evaluation System**: Scoring and feedback on speech effectiveness
+- **Player Speech Options**: Generation of multiple speech alternatives for player choice
 
 ## Components
 
@@ -103,7 +104,25 @@ Functions:
 - `evaluate_speech()`: Provides comprehensive speech evaluation
 - `calculate_audience_reaction()`: Determines how the audience would respond
 
+### 7. `speech_options_generator.py`
+
+Generates multiple speech options for player selection with meaningful variations:
+
+- Different political stances (support, oppose, neutral)
+- Various rhetorical approaches and styles
+- Structural variations in speech composition
+- Diverse historical and cultural references
+- Different emotional tones and appeals
+
+Functions:
+- `generate_speech_options()`: Creates multiple varied speech options
+- `generate_option_summaries()`: Provides brief summaries for player selection
+- `create_varied_stances()`: Generates different stance options
+- `create_varied_rhetorical_approaches()`: Creates diverse rhetorical styles
+
 ## Usage
+
+### Basic Speech Generation
 
 The framework is used primarily through the main `generate_speech()` function:
 
@@ -124,6 +143,38 @@ english_text = speech["text"]
 latin_text = speech["latin_version"]
 evaluation = speech["evaluation"]
 ```
+
+### Player Speech Options
+
+To generate multiple speech options for player selection:
+
+```python
+from speech_generation import generate_speech_options, generate_option_summaries
+
+# Generate speech options
+speech_options = generate_speech_options(
+    senator=senator_data,
+    topic="The expansion of citizenship to Italian allies",
+    context={
+        "year": -91,  # 91 BCE
+        "faction_stance": {"Optimates": "oppose", "Populares": "support"},
+        "responding_to": previous_speaker
+    },
+    previous_speeches=debate_speeches,
+    count=3  # Number of options to generate
+)
+
+# Access the options
+for option in speech_options:
+    print(f"Option: {option['summary']}")
+    print(f"Stance: {option['stance']}")
+    print(f"Speech: {option['full_text'][:100]}...")  # First 100 chars
+    
+# Generate summaries for display
+summaries = generate_option_summaries(speech_options)
+```
+
+### Advanced Component Access
 
 Advanced users can also access the individual components:
 
@@ -156,3 +207,4 @@ To add new speech generation features:
 - New rhetorical devices: Add to the `RHETORICAL_DEVICES` dictionary in `rhetorical_devices.py`
 - Additional historical references: Expand the period dictionaries in `historical_context.py`
 - New senator archetypes: Add to `ARCHETYPES` list in `archetype_system.py`
+- New speech variations: Add to the rhetorical approaches in `speech_options_generator.py`

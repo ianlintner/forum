@@ -15,16 +15,19 @@ import time
 import openai
 from config import DEFAULT_GPT_MODEL
 from typing import Dict, List, Optional
+import player_manager
+import player_ui
+import speech_generation
+import interjection_handler
 from collections import defaultdict
-# Import the enhanced speech generation system
-from speech_generation import generate_speech as enhanced_generate_speech
 from rich.panel import Panel
 from rich.text import Text
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 import utils
+from logging_utils import get_logger
 
-
+logger = get_logger()
 console = utils.console
 
 # Relationship tracking between senators
@@ -201,6 +204,7 @@ def conduct_debate(
         senators_list (List[Dict]): List of senators participating
         rounds (int): Number of debate rounds
         topic_category (str, optional): Category of the topic (e.g., Military funding)
+        year (int, optional): The year in Roman history
     """
     # Reset debate state for a new debate
     reset_debate_state()
@@ -208,6 +212,9 @@ def conduct_debate(
     # Handle case where topic might be None
     topic_display = topic if topic else "Unknown Topic"
 
+    # Get the player senator if present
+    player_senator = player_manager.get_player_senator(senators_list)
+    
     # Create a more informative debate introduction
     if topic_category:
         introduction = f"The Senate will now debate on a matter of [bold yellow]{topic_category}[/]:\n[italic]{topic_display}[/]"
@@ -291,29 +298,111 @@ def conduct_debate(
                             responded_pairs.add((current_senator_id, prev_senator_id))
                         break
 
-            # Generate senator's speech with progress display
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                console=console,
-                transient=True
-            ) as progress:
-                task = progress.add_task(
-                    f"[cyan]Senator {senator['name']} is formulating an argument...[/]",
-                    total=None
+            # Check if this is the player's senator
+            if player_senator and player_manager.is_player_senator(senator):
+                logger.info(f"Player's turn to speak as {senator['name']} {senator.get('family', '')}")
+                console.print(f"[bold green]It's your turn to speak as {senator['name']}![/]")
+                
+                # Create context dict for speech options generator
+                speech_context = {
+                    "topic": topic,
+                    "year": year,
+                    "faction_stance": faction_stances,
+                    "responding_to": responding_to
+                }
+                
+                # Generate speech options for the player (default to 3 options)
+                speech_options = generate_speech_options(
+                    senator=senator,
+                    topic=topic,
+                    context=speech_context,
+                    previous_speeches=previous_speeches,
+                    count=3
                 )
                 
-                speech = generate_speech(
-                    senator,
-                    topic,
-                    faction_stance=faction_stances,
-                    year=year,  # Use the function parameter instead of undefined session_year
-                    responding_to=responding_to,
-                    previous_speeches=previous_speeches,
-                )
+                # Present options to the player and get their choice
+                selected_option = present_speech_options(speech_options, topic)
+                
+                # Handle player abstaining from speaking
+                if selected_option.get("action") == "abstain":
+                    console.print(f"[italic]{senator['name']} chooses not to speak on this matter.[/]")
+                    continue
+                
+                # Create a speech record from the selected option
+                speech = {
+                    "senator_id": senator.get("id", 0),
+                    "senator_name": senator.get("name", "Unknown"),
+                    "faction": senator.get("faction", "Unknown"),
+                    "latin_text": selected_option.get("latin_text", ""),
+                    "english_text": selected_option.get("english_text", ""),
+                    "full_text": selected_option.get("full_text", ""),
+                    "stance": selected_option.get("stance", "neutral"),
+                    "key_points": selected_option.get("key_points", []),
+                    "year": year,
+                    "is_player": True,
+                    "responding_to": responding_to.get("senator_name") if responding_to else None,
+                }
+                
+                # Display the player's chosen speech
+                display_speech(senator, speech, topic)
+                
+            else:
+                # Generate AI senator's speech with progress display
+                with Progress(
+                    SpinnerColumn(),
+                    TextColumn("[progress.description]{task.description}"),
+                    console=console,
+                    transient=True
+                ) as progress:
+                    task = progress.add_task(
+                        f"[cyan]Senator {senator['name']} is formulating an argument...[/]",
+                        total=None
+                    )
+                    
+                    speech = generate_speech(
+                        senator,
+                        topic,
+                        faction_stance=faction_stances,
+                        year=year,
+                        responding_to=responding_to,
+                        previous_speeches=previous_speeches,
+                    )
 
-            # Display the speech
-            display_speech(senator, speech, topic)
+                # Display the speech
+                display_speech(senator, speech, topic)
+                
+                # If player is participating, check for interjection opportunities
+                if player_senator and not player_manager.is_player_senator(senator):
+                    # Generate interjection opportunities for the player
+                    interjection_options = generate_interjection_options(
+                        player_senator=player_senator,
+                        target_senator=senator,
+                        speech_content=speech,
+                        count=3
+                    )
+                    
+                    # If there are valid interjection opportunities, present them to the player
+                    if interjection_options:
+                        # Present interjection options to the player
+                        selected_interjection = present_interjection_options(interjection_options, senator)
+                        
+                        # Process the selected interjection if not "remain_silent"
+                        if selected_interjection.get("action") != "remain_silent":
+                            # Process the effects of the interjection
+                            effects = process_interjection_effects(
+                                player_senator=player_senator,
+                                target_senator=senator,
+                                interjection=selected_interjection
+                            )
+                            
+                            # Display the interjection and its effects
+                            display_player_action_result(
+                                {
+                                    "content": selected_interjection.get("content", ""),
+                                    "effects": [effects.get("description", "")]
+                                },
+                                "interjection"
+                            )
 
             # Add to debate summary and previous speeches
             debate_summary.append(speech)
@@ -358,7 +447,7 @@ def generate_speech(
         utils.display_progress("Using enhanced speech generation framework...")
         
         # Call the enhanced speech generator with the same parameters
-        enhanced_speech = enhanced_generate_speech(
+        enhanced_speech = speech_generation.generate_speech(
             senator=senator,
             topic=topic,
             faction_stance=faction_stance,
@@ -923,6 +1012,107 @@ def generate_position_summary(senator: Dict, speech: Dict, topic: str) -> str:
     # Get trait values with defaults if missing
     eloquence = traits.get("eloquence", 0.5)
     loyalty = traits.get("loyalty", 0.5)
+def get_interjection_opportunity(player_senator: Dict, current_speaker: Dict,
+                                speech_content: str, debate_context: Dict) -> Optional[Dict]:
+    """
+    Check if there's an opportunity for the player to interject during another senator's speech.
+    
+    Args:
+        player_senator: The player's senator
+        current_speaker: The senator currently speaking
+        speech_content: The content of the current speech
+        debate_context: The current debate context
+        
+    Returns:
+        Dict with interjection opportunity details or None if no opportunity exists
+    """
+    # Check if interjections are even possible in this context
+    if not player_senator or player_senator.get('interjections_remaining', 0) <= 0:
+        return None
+        
+    # Don't allow interjecting during your own speech
+    if player_senator.get('id') == current_speaker.get('id'):
+        return None
+        
+    # Use the interjection_handler module to generate interjection options
+    interjection_options = generate_interjection_options(
+        player_senator=player_senator,
+        target_senator=current_speaker,
+        speech_content=speech_content,
+        count=3
+    )
+    
+    if not interjection_options:
+        return None
+        
+    # Create an opportunity context with relevant information
+    opportunity = {
+        "context": {
+            "speaker_name": current_speaker.get('name', 'Unknown'),
+            "speaker_faction": current_speaker.get('faction', 'Unknown'),
+            "speech_excerpt": speech_content.get('english_text', '')[:100] + "...",
+            "stance": speech_content.get('stance', 'neutral')
+        },
+        "options": interjection_options
+    }
+    
+    return opportunity
+
+
+def process_interjection(player_senator: Dict, current_speaker: Dict,
+                        interjection_content: str, interjection_type: str,
+                        debate_context: Dict) -> Dict:
+    """
+    Process the effects of a player's interjection during debate.
+    
+    Args:
+        player_senator: The player's senator
+        current_speaker: The senator being interjected
+        interjection_content: The content of the interjection
+        interjection_type: The type of interjection (e.g., "acclamation", "objection")
+        debate_context: The current debate context
+        
+    Returns:
+        Dict with the results and effects of the interjection
+    """
+    logger.info(f"Processing player interjection of type {interjection_type}")
+    
+    # Create an interjection object for the effects processor
+    interjection = {
+        "type": interjection_type,
+        "content": interjection_content,
+        "intensity": 1.0  # Default intensity
+    }
+    
+    # Process the effects using the interjection handler
+    effects = process_interjection_effects(
+        player_senator=player_senator,
+        target_senator=current_speaker,
+        interjection=interjection
+    )
+    
+    # Update relationship between player and speaker
+    if "relationship_change" in effects and effects["relationship_change"] != 0:
+        old_relationship = player_senator.get('relationships', {}).get(current_speaker.get('id', 0), 0)
+        new_relationship = old_relationship + effects["relationship_change"]
+        
+        # Update the relationship in the player senator's data
+        if 'relationships' not in player_senator:
+            player_senator['relationships'] = {}
+        player_senator['relationships'][current_speaker.get('id', 0)] = new_relationship
+        
+        logger.info(f"Updated relationship: {old_relationship} -> {new_relationship}")
+    
+    # Combine all effects into a result dictionary
+    result = {
+        "senator_name": player_senator.get('name', 'You'),
+        "target_name": current_speaker.get('name', 'the speaker'),
+        "content": interjection_content,
+        "type": interjection_type,
+        "effects": effects
+    }
+    
+    return result
     corruption = traits.get("corruption", 0.1)
     
     # Apply reasoning logic with the safely accessed traits

@@ -178,32 +178,34 @@ class APILogger:
             print(f"{Fore.GREEN}[Complete]{Style.RESET_ALL} Total tokens: {self.total_tokens}")
         
         return duration
-    
-    def log_error(self, error: Exception) -> None:
-        """Log error information."""
-        # File logging
-        self.logger.error("API Error: %s", str(error), exc_info=True)
-        
-        # Console output
-        print(f"{Fore.RED}[Error]{Style.RESET_ALL} {str(error)}")
 
-# Global logger instance - only create if debug logging is enabled
-api_logger = APILogger() if DEBUG_LOGGING_ENABLED else None
 
 def get_logger():
-    """
-    Get the API logger instance. If logging is disabled, returns a dummy logger
-    that does nothing.
-    """
-    if not DEBUG_LOGGING_ENABLED:
-        # Create a dummy logger that does nothing
-        dummy_logger = type('DummyLogger', (), {
-            'start_api_call': lambda *args, **kwargs: None,
-            'log_token_count': lambda *args, **kwargs: None,
-            'log_streaming_progress': lambda *args, **kwargs: None,
-            'log_response': lambda *args, **kwargs: None,
-            'end_api_call': lambda *args, **kwargs: 0.0,
-            'log_error': lambda *args, **kwargs: None
-        })()
-        return dummy_logger
-    return api_logger
+    """Returns a simple logger instance."""
+    if DEBUG_LOGGING_ENABLED:
+        return APILogger()
+    else:
+        # Return a dummy logger that does nothing
+        return DummyLogger()
+
+
+class DummyLogger:
+    """A dummy logger that does nothing - used when debug logging is disabled."""
+    
+    def __init__(self):
+        pass
+        
+    def start_api_call(self, *args, **kwargs):
+        pass
+        
+    def log_token_count(self, *args, **kwargs):
+        pass
+        
+    def log_streaming_progress(self, *args, **kwargs):
+        pass
+        
+    def log_response(self, *args, **kwargs):
+        pass
+        
+    def end_api_call(self, *args, **kwargs):
+        return 0.0
