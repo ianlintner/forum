@@ -48,3 +48,77 @@
 - Added `generate_position_summary` function in `debate.py`
 - Created detailed summaries that explain faction motivations
 - Used color coding and clear position tags (FOR/AGAINST/UNDECIDED)
+
+---
+
+[2025-04-13 21:26:40] - **Bug Identified in Logging System**
+
+**Decision:** Document bug in logging_utils.py related to time tracking during vote processing.
+
+**Rationale:**
+- Bug causes TypeError during voting phase: `unsupported operand type(s) for -: 'float' and 'NoneType'`
+- Error occurs in log_response method when calculating elapsed time
+- Despite errors, game continues functioning due to error handling
+
+**Next Steps:**
+- Investigate the self.start_time initialization in logging_utils.py
+- Add proper null checking before time arithmetic operations
+- Consider using a default value when start_time is None
+- Create more comprehensive error handling in the logging module
+
+---
+
+[2025-04-13 23:22:30] - **Implementation of Historically Accurate Roman Senate Flow**
+
+**Decision:** Implement complete Roman Senate session flow following authentic historical procedures.
+
+**Rationale:**
+- Creates a more immersive and educational gameplay experience
+- Follows the historically accurate sequence described in Roman sources
+- Provides a complete game loop with all phases of Senate operations
+- Addresses historical accuracy requirements in the game design
+
+**Implementation:**
+- Modified senate_session.py to handle the complete procedural flow
+- Added opening ceremonies with religious observances and auspices
+- Implemented attendance tracking and seating by rank
+- Created formal introduction of agenda items (Relatio)
+- Enhanced backroom political dealings between debates
+- Added voting session with detailed results analysis
+- Implemented formal session conclusion with adjournment speech
+
+---
+
+[2025-04-13 23:22:30] - **Bug Fixes for Game Flow Completion**
+
+**Decision:** Implement defensive programming techniques to handle missing senator attributes.
+
+**Rationale:**
+- Missing senator traits and influence values were causing game-breaking errors
+- Errors occurred during debate speech analysis and voting phases
+- Defensive programming ensures game can continue even with incomplete data
+- Maintains gameplay flow without critical failures
+
+**Implementation:**
+- Modified debate.py to safely access senator traits:
+  ```python
+  # Handle potential missing traits safely
+  traits = senator.get("traits", {}) or {}
+  
+  # Get trait values with defaults if missing
+  eloquence = traits.get("eloquence", 0.5)
+  loyalty = traits.get("loyalty", 0.5)
+  corruption = traits.get("corruption", 0.1)
+  ```
+- Modified senate_session.py to safely access senator influence:
+  ```python
+  # Create voting record with safe access to influence
+  voting_record.append({
+      "senator": senator["name"],
+      "faction": senator["faction"],
+      "vote": vote,
+      "influence": senator.get("influence", 0.5),  # Default influence value if missing
+      "debate_stance": debate_stance
+  })
+  ```
+- Added inline comments explaining the defensive programming approach

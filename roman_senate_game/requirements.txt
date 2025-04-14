@@ -1,8 +1,17 @@
-# Required dependencies
-openai>=1.0.0,<2.0.0
-typer>=0.9.0
-rich>=13.0.0  # Required for UI components
+# Installation
+# 1. Create virtual environment: python -m venv venv
+# 2. Activate: source venv/bin/activate (Linux/Mac) or venv\Scripts\activate (Windows)
+# 3. Install: pip install -r requirements.txt
+
+# Core dependencies
+openai>=1.0.0
+rich>=10.0.0
 python-dotenv>=1.0.0
-setuptools>=69.0.0  # Required for pkg_resources
-tiktoken>=0.5.0  # Required for token counting
-crewai>=0.11.0,<0.12.0  # Required for AI functionality
+asyncio>=3.4.3
+tqdm>=4.65.0
+aiofiles>=23.1.0
+
+# Development dependencies
+pytest>=7.3.1
+black>=23.3.0
+flake8>=6.0.0
