@@ -16,6 +16,8 @@ import openai
 from config import DEFAULT_GPT_MODEL
 from typing import Dict, List, Optional
 from collections import defaultdict
+# Import the enhanced speech generation system
+from speech_generation import generate_speech as enhanced_generate_speech
 from rich.panel import Panel
 from rich.text import Text
 from rich.console import Console
@@ -188,7 +190,8 @@ def add_to_debate_history(speech_data: Dict):
 
 
 def conduct_debate(
-    topic: str, senators_list: List[Dict], rounds: int = 3, topic_category: str = None
+    topic: str, senators_list: List[Dict], rounds: int = 3, topic_category: str = None,
+    year: int = None
 ):
     """
     Conduct a debate on the given topic with interactive responses between senators.
@@ -303,8 +306,8 @@ def conduct_debate(
                 speech = generate_speech(
                     senator,
                     topic,
-                    faction_stances=faction_stances,
-                    year=year,
+                    faction_stance=faction_stances,
+                    year=year,  # Use the function parameter instead of undefined session_year
                     responding_to=responding_to,
                     previous_speeches=previous_speeches,
                 )
@@ -349,6 +352,101 @@ def generate_speech(
         Dict: Speech data including the full text, key points, stance, historical context,
               and information about which senators were mentioned or responded to
     """
+    # Use the enhanced speech generation system
+    try:
+        # Log that we're using enhanced generation
+        utils.display_progress("Using enhanced speech generation framework...")
+        
+        # Call the enhanced speech generator with the same parameters
+        enhanced_speech = enhanced_generate_speech(
+            senator=senator,
+            topic=topic,
+            faction_stance=faction_stance,
+            year=year,
+            responding_to=responding_to,
+            previous_speeches=previous_speeches
+        )
+        
+        # Validate that we received a proper speech object
+        if not isinstance(enhanced_speech, dict):
+            raise TypeError(f"Enhanced speech generator returned {type(enhanced_speech)} instead of a dictionary")
+            
+        # Check if we have the minimum required fields for a valid speech
+        required_fields = ["text"]
+        missing_fields = [field for field in required_fields if field not in enhanced_speech]
+        
+        if missing_fields:
+            raise ValueError(f"Enhanced speech missing required fields: {', '.join(missing_fields)}")
+        
+        # Convert enhanced speech to match the expected format for compatibility
+        # If the enhanced speech already has all the expected fields, we can return it directly
+        if all(field in enhanced_speech for field in ["text", "senator_name", "stance", "points"]):
+            utils.display_progress("Enhanced speech format compatible, using directly")
+            
+            # Make sure the "full_text" field is populated for backward compatibility
+            if "full_text" not in enhanced_speech and "text" in enhanced_speech:
+                enhanced_speech["full_text"] = enhanced_speech["text"]
+            
+            # Make sure english_text and latin_text are populated
+            if "english_text" not in enhanced_speech:
+                enhanced_speech["english_text"] = enhanced_speech.get("text", "")
+            if "latin_text" not in enhanced_speech:
+                enhanced_speech["latin_text"] = enhanced_speech.get("latin_version", "Lorem ipsum dolor sit amet...")
+            
+            # Add to debate history
+            add_to_debate_history(enhanced_speech)
+            
+            return enhanced_speech
+            
+        # If formats don't match, create a compatible output
+        utils.display_progress("Converting enhanced speech to compatible format")
+        speech_data = {
+            "senator_id": senator.get("id", 0),
+            "senator_name": senator["name"],
+            "faction": senator["faction"],
+            "latin_text": enhanced_speech.get("latin_version", ""),
+            "english_text": enhanced_speech.get("text", ""),
+            "full_text": enhanced_speech.get("text", ""),
+            "stance": enhanced_speech.get("stance", "neutral"),
+            # Extract key points from the text if not provided
+            "key_points": enhanced_speech.get("points", []) or enhanced_speech.get("text", "").split(". ")[:2],
+            "year": year,
+            "year_display": enhanced_speech.get("year_display", f"{abs(year) if year else 0} BCE"),
+            "historical_context": enhanced_speech.get("historical_context", ""),
+            # Additional fields from enhanced speech
+            "archetype": enhanced_speech.get("archetype", {}),
+            "selected_devices": enhanced_speech.get("selected_devices", []),
+            "speech_structure": enhanced_speech.get("speech_structure", {}),
+            "evaluation": enhanced_speech.get("evaluation", {}),
+            # Interaction data
+            "responding_to": responding_to.get("senator_name") if responding_to else None,
+            "mentioned_senators": enhanced_speech.get("mentioned_senators", []),
+            "is_response": responding_to is not None,
+        }
+        
+        # Add to debate history
+        add_to_debate_history(speech_data)
+        
+        return speech_data
+    
+    except ImportError as e:
+        console.print(f"[bold yellow]Warning: Enhanced speech generation module not available: {e}[/]. Using original method.")
+        # If the enhanced speech module is missing, use the original method
+        pass
+    except TypeError as e:
+        console.print(f"[bold yellow]Warning: Enhanced speech generation type error: {e}[/]. Using original method.")
+        # If there's a type error, use the original method
+        pass
+    except ValueError as e:
+        console.print(f"[bold yellow]Warning: Enhanced speech generation value error: {e}[/]. Using original method.")
+        # If there's a value error, use the original method
+        pass
+    except Exception as e:
+        console.print(f"[bold yellow]Warning: Enhanced speech generation failed: {e}[/]. Using original method.")
+        # If the enhanced speech generation fails for any other reason, use the original method
+        pass
+    
+    # Original implementation as fallback
     # Determine the senator's likely stance based on faction and personality
     # Default stances if none provided
     if not faction_stance:
@@ -874,15 +972,15 @@ def get_historical_context(year: int) -> str:
 
 
 def generate_multiple_speeches(
-    senators: List[Dict], topic: str, faction_stances: Dict = None, year: int = None
+    senators: List[Dict], topic: str, faction_stance: Dict = None, year: int = None
 ) -> List[Dict]:
     """
-    Generate speeches for multiple senators sequentially.
+    Generate speeches for multiple senators sequentially using the enhanced speech generation framework.
 
     Args:
         senators (List[Dict]): List of senator data
         topic (str): Debate topic
-        faction_stances (Dict, optional): Faction stances on the topic
+        faction_stance (Dict, optional): Faction stances on the topic
         year (int, optional): Historical year
 
     Returns:
@@ -890,14 +988,25 @@ def generate_multiple_speeches(
     """
     console.print(f"[bold cyan]Generating {len(senators)} speeches...[/]")
     start_time = time.time()
+    
+    # Store previous speeches to provide as context for subsequent speakers
+    previous_speeches = []
 
     # Process each senator sequentially
     speeches = []
-    for senator in senators:
+    for i, senator in enumerate(senators):
+        console.print(f"[cyan]Generating speech {i+1}/{len(senators)} for {senator['name']}...[/]")
+        
+        # Use the same generate_speech function that conduct_debate uses
         speech = generate_speech(
-            senator=senator, topic=topic, faction_stance=faction_stances, year=year
+            senator=senator,
+            topic=topic,
+            faction_stance=faction_stance,
+            year=year,
+            previous_speeches=previous_speeches  # Pass previously generated speeches as context
         )
         speeches.append(speech)
+        previous_speeches.append(speech)
 
     total_time = time.time() - start_time
     console.print(
