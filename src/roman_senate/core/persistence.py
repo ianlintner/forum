@@ -15,6 +15,7 @@ from typing import Dict, List, Any, Optional
 from pathlib import Path
 
 from ..core.game_state import game_state, GameState
+from ..core.roman_calendar import CalendarType
 from ..utils.llm.factory import get_llm_provider
 
 # Configure logging
@@ -195,7 +196,9 @@ def serialize_game_state(game_state: GameState) -> Dict[str, Any]:
         "current_topic": game_state.current_topic,
         "year": game_state.year,
         "voting_results": game_state.voting_results,
-        "senators": [serialize_senator(senator) for senator in game_state.senators]
+        "senators": [serialize_senator(senator) for senator in game_state.senators],
+        # Add calendar serialization
+        "calendar": serialize_calendar(game_state.calendar) if game_state.calendar else None
     }
     return state_dict
 
@@ -219,6 +222,11 @@ def deserialize_game_state(state_dict: Dict[str, Any]) -> None:
     # Deserialize senators
     senator_dicts = state_dict.get("senators", [])
     game_state.senators = [deserialize_senator(senator_dict) for senator_dict in senator_dicts]
+    
+    # Deserialize calendar if present
+    calendar_dict = state_dict.get("calendar")
+    if calendar_dict:
+        deserialize_calendar(game_state, calendar_dict)
 
 
 def serialize_senator(senator: Dict[str, Any]) -> Dict[str, Any]:
@@ -303,3 +311,47 @@ def deserialize_agent_memory(memory, memory_dict: Dict[str, Any]) -> None:
     memory.voting_history = memory_dict.get("voting_history", {})
     memory.debate_history = memory_dict.get("debate_history", [])
     memory.relationship_scores = memory_dict.get("relationship_scores", {})
+
+
+def serialize_calendar(calendar) -> Dict[str, Any]:
+    """
+    Serialize the calendar object to a dictionary.
+    
+    Args:
+        calendar: The RomanCalendar object to serialize
+        
+    Returns:
+        Dictionary representation of the calendar
+    """
+    if not calendar:
+        return None
+    
+    return {
+        "year": calendar.year,
+        "calendar_type": calendar.calendar_type.value,
+        "current_month_idx": calendar.current_month_idx,
+        "current_day": calendar.current_day,
+        "consuls": calendar.consuls
+    }
+
+
+def deserialize_calendar(game_state, calendar_dict: Dict[str, Any]) -> None:
+    """
+    Deserialize a calendar dictionary into the game state.
+    
+    Args:
+        game_state: The GameState object to update
+        calendar_dict: Dictionary containing the calendar data
+    """
+    year = calendar_dict.get("year", game_state.year)
+    calendar_type_str = calendar_dict.get("calendar_type", "pre_julian")
+    calendar_type = CalendarType.PRE_JULIAN if calendar_type_str == "pre_julian" else CalendarType.JULIAN
+    
+    # Initialize the calendar
+    game_state.initialize_calendar(year, calendar_type)
+    
+    # Set the current state
+    game_state.calendar.current_month_idx = calendar_dict.get("current_month_idx", 0)
+    game_state.calendar.current_month = game_state.calendar.months[game_state.calendar.current_month_idx]
+    game_state.calendar.current_day = calendar_dict.get("current_day", 1)
+    game_state.calendar.consuls = calendar_dict.get("consuls", [])

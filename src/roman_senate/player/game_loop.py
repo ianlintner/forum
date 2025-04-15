@@ -18,6 +18,7 @@ from rich.prompt import Prompt, Confirm
 from ..core.game_state import game_state
 from ..core import senators as senators_module
 from ..core import topic_generator, senate_session, debate, vote
+from ..core.roman_calendar import DateFormat
 from .player import Player
 from .player_manager import PlayerManager
 from .player_ui import PlayerUI
@@ -54,6 +55,9 @@ class PlayerGameLoop:
         game_state.year = year
         self.year = year
         
+        # Initialize Roman calendar
+        game_state.initialize_calendar(year)
+        
         # Character creation
         player = self.create_character()
         self.player_ui.set_player(player)
@@ -81,6 +85,25 @@ class PlayerGameLoop:
                 selected_topics.append((topic_obj['text'], topic_obj['category']))
         
         self.topics = selected_topics
+        
+        # Display current calendar date
+        current_date = game_state.get_formatted_date(DateFormat.ROMAN_FULL)
+        modern_date = game_state.get_formatted_date(DateFormat.MODERN)
+        console.print(f"\n[bold cyan]Current Date: {current_date}[/]")
+        console.print(f"[italic]({modern_date})[/]")
+        
+        # Check for any special events for today
+        special_events = game_state.calendar.get_special_events_for_current_day()
+        if special_events:
+            console.print("\n[bold yellow]Today's Events:[/]")
+            for event in special_events:
+                console.print(f"[bold]{event['name']}[/]: {event['description']}")
+                
+        # Check if senate can meet today
+        can_meet, reason = game_state.can_hold_senate_session()
+        if not can_meet:
+            console.print(f"\n[bold red]WARNING:[/] {reason}")
+            console.print("The Senate is convening despite traditional restrictions.")
         
         # Start the modified senate session with player participation
         console.print("\n[bold cyan]Beginning Senate session...[/]")
@@ -186,6 +209,20 @@ class PlayerGameLoop:
                 except Exception as e:
                     console.print(f"[dim]Auto-save failed: {str(e)}[/]")
         
+        # Advance the calendar day after the session
+        game_state.advance_day()
+        new_date = game_state.get_formatted_date(DateFormat.ROMAN_FULL)
+        new_modern_date = game_state.get_formatted_date(DateFormat.MODERN)
+        console.print(f"\n[bold cyan]A new day begins: {new_date}[/]")
+        console.print(f"[italic]({new_modern_date})[/]")
+        
+        # Check for any special events on the new day
+        new_special_events = game_state.calendar.get_special_events_for_current_day()
+        if new_special_events:
+            console.print("\n[bold yellow]Upcoming Events:[/]")
+            for event in new_special_events:
+                console.print(f"[bold]{event['name']}[/]: {event['description']}")
+        
         # Save the player state after the session
         self.player_manager.save_player()
         
@@ -247,6 +284,26 @@ class PlayerSenateSession(senate_session.SenateSession):
         Override to ensure player is always included in attendance.
         """
         console.print("\n[bold yellow]ATTENDANCE AND SEATING ARRANGEMENTS[/]")
+        
+        # Display current date in Roman style
+        if hasattr(self.game_state, 'calendar') and self.game_state.calendar:
+            roman_date = self.game_state.calendar.format_current_date(DateFormat.ROMAN_FULL)
+            modern_date = self.game_state.calendar.format_current_date(DateFormat.MODERN)
+            console.print(f"\n[bold cyan]Current Date: {roman_date}[/]")
+            console.print(f"[italic]({modern_date})[/]")
+            
+            # Display any special events for today
+            special_events = self.game_state.calendar.get_special_events_for_current_day()
+            if special_events:
+                for event in special_events:
+                    console.print(f"[bold yellow]Today is {event['name']}[/]")
+                    console.print(f"[italic]{event['description']}[/]")
+                    
+                    # Apply special event effects to attendance if needed
+                    if "increased_attendance" in event.get("effects", []):
+                        console.print("[green]The significance of this day has increased Senate attendance.[/]")
+                    elif "decreased_attendance" in event.get("effects", []):
+                        console.print("[yellow]Many senators are absent attending religious ceremonies.[/]")
         
         # Create a copy of senators for attendance
         all_senators = [self.presiding_magistrate] + self.senators
@@ -383,6 +440,15 @@ class PlayerSenateSession(senate_session.SenateSession):
         Returns:
             List of results for each topic
         """
+        # Check if senate can meet today
+        can_meet, reason = self.game_state.calendar.can_hold_senate_session()
+        if not can_meet:
+            console.print(f"\n[bold red]WARNING:[/] {reason}")
+            console.print("The Senate is convening despite traditional restrictions.")
+            
+            # Add special magistrate justification
+            console.print(f"[italic]{self.presiding_magistrate['title']} {self.presiding_magistrate['name']} has declared this an exceptional circumstance.[/]")
+            
         console.print(Panel(
             "[bold yellow]SENATE SESSION BEGINS[/]",
             border_style="yellow",

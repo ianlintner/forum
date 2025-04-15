@@ -25,7 +25,7 @@ from rich.prompt import Prompt, Confirm
 from . import senators, debate, vote, topic_generator
 from .game_state import game_state
 from ..core.persistence import auto_save
-from .game_state import game_state
+from .roman_calendar import DateFormat
 
 # Initialize console
 console = Console()
@@ -81,8 +81,41 @@ class SenateSession:
         else:
             self.meeting_location = "Curia Cornelia"
             
-        # Random session details
-        self.auspices_favorable = random.random() > 0.1  # Usually favorable
+        # Initialize calendar if not already initialized
+        if not hasattr(game_state, 'calendar') or game_state.calendar is None:
+            game_state.initialize_calendar(year)
+        
+        # Store session date
+        self.session_date = game_state.calendar.get_current_date()
+        
+        # Check if session can be held today
+        can_meet, reason = game_state.calendar.can_hold_senate_session()
+        if not can_meet and not test_mode:
+            console.print(f"[bold red]WARNING:[/] {reason}")
+            console.print(f"The next available senate day would be:")
+            next_date = game_state.calendar.get_next_senate_day()
+            if next_date:
+                console.print(f"[bold cyan]{next_date.format(DateFormat.ROMAN_FULL)}[/]")
+                console.print(f"([italic]{next_date.format(DateFormat.MODERN)}[/])")
+            else:
+                console.print("[italic]No suitable day found in the next 30 days.[/]")
+        
+        # Check for special events that affect auspices
+        special_events = game_state.calendar.get_special_events_for_current_day()
+        
+        # Random session details - influenced by calendar
+        self.auspices_favorable = True  # Default to favorable
+        
+        # Apply special day effects to auspices if any
+        for event in special_events:
+            if "religious_tension" in event.get("effects", []):
+                self.auspices_favorable = random.random() > 0.3  # Less likely to be favorable
+            elif "festival_day" in event.get("effects", []):
+                self.auspices_favorable = random.random() > 0.05  # Very likely to be favorable
+            elif "ides_of_march" in event.get("effects", []):
+                self.auspices_favorable = random.random() > 0.5  # 50/50 chance
+            else:
+                self.auspices_favorable = random.random() > 0.1  # Usually favorable
         
     def _select_presiding_magistrate(self) -> Dict:
         """Select the presiding magistrate for the session based on historical protocols."""
@@ -131,6 +164,20 @@ class SenateSession:
         with former magistrates (especially former consuls) seated in the front rows.
         """
         console.print("\n[bold yellow]ATTENDANCE AND SEATING ARRANGEMENTS[/]")
+        
+        # Display current date in Roman style
+        if hasattr(self.game_state, 'calendar') and self.game_state.calendar:
+            roman_date = self.game_state.calendar.format_current_date(DateFormat.ROMAN_FULL)
+            modern_date = self.game_state.calendar.format_current_date(DateFormat.MODERN)
+            console.print(f"\n[bold cyan]Current Date: {roman_date}[/]")
+            console.print(f"[italic]({modern_date})[/]")
+            
+            # Display any special events for today
+            special_events = self.game_state.calendar.get_special_events_for_current_day()
+            if special_events:
+                for event in special_events:
+                    console.print(f"[bold yellow]Today is {event['name']}[/]")
+                    console.print(f"[italic]{event['description']}[/]")
         
         # Create a copy of senators for attendance
         all_senators = [self.presiding_magistrate] + self.senators
@@ -197,8 +244,8 @@ class SenateSession:
             
             # Get senators of this rank who are attending
             rank_senators = [s for s in self.attending_senators 
-                              if s.get("influence", 0) >= influence_min 
-                              and s.get("senator_id", 0) not in listed_senators]
+                               if s.get("influence", 0) >= influence_min 
+                               and s.get("senator_id", 0) not in listed_senators]
             
             # If no senators of this rank, skip
             if not rank_senators:
@@ -438,6 +485,22 @@ async def run_session(senators_count: int = 10, debate_rounds: int = 3, topics_c
     
     game_state.year = year
     
+    # Initialize calendar with the current year
+    game_state.initialize_calendar(year)
+    
+    # Display current date
+    roman_date = game_state.calendar.format_current_date(DateFormat.ROMAN_FULL)
+    modern_date = game_state.calendar.format_current_date(DateFormat.MODERN)
+    console.print(f"\n[bold cyan]Current Date: {roman_date}[/]")
+    console.print(f"[italic]({modern_date})[/]")
+    
+    # Display any special events for today
+    special_events = game_state.calendar.get_special_events_for_current_day()
+    if special_events:
+        for event in special_events:
+            console.print(f"[bold yellow]Today is {event['name']}[/]")
+            console.print(f"[italic]{event['description']}[/]")
+    
     # Initialize senators
     senate_members = senators.initialize_senate(senators_count)
     game_state.senators = senate_members
@@ -478,6 +541,18 @@ async def run_session(senators_count: int = 10, debate_rounds: int = 3, topics_c
     
     # Display summary
     display_session_summary(results)
+    
+    # Advance the day after the session
+    game_state.advance_day()
+    console.print(f"\n[bold cyan]A new day begins: {game_state.get_formatted_date(DateFormat.ROMAN_FULL)}[/]")
+    console.print(f"[italic]({game_state.get_formatted_date(DateFormat.MODERN)})[/]")
+    
+    # Check for any special events on the new day
+    new_special_events = game_state.calendar.get_special_events_for_current_day()
+    if new_special_events:
+        console.print("\n[bold yellow]Upcoming Events:[/]")
+        for event in new_special_events:
+            console.print(f"[bold]{event['name']}[/]: {event['description']}")
     
     return results
 
