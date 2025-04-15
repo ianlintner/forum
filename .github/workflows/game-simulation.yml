@@ -48,6 +48,8 @@ jobs:
         pip install -e .
     
     - name: Run non-interactive game simulation
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       run: |
         # Set non-interactive test mode for LLM providers
         export ROMAN_SENATE_TEST_MODE=true
