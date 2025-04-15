@@ -88,6 +88,22 @@
   - Created SenateSession adapter methods for test compatibility
 - Added proper pytest configuration files and directory structure
 
+[2025-04-14 21:45:00] - **Added CI/CD and Non-Interactive Testing Capabilities**
+- Created GitHub Actions workflow configurations:
+  - pytest.yml for running test suite on multiple Python versions
+  - game-simulation.yml for automated non-interactive gameplay testing
+- Implemented non-interactive simulation mode in cli.py:
+  - Added new `simulate` command with non-interactive flag
+  - Implemented environment variable support for CI testing (ROMAN_SENATE_TEST_MODE)
+  - Added proper exit codes for CI environment feedback
+- Enhanced senate_session.py with test mode support:
+  - Added test_mode parameter to constructors and methods
+  - Implemented deterministic behavior for reproducible testing
+  - Created simplified outputs suitable for automated verification
+  - Modified user interaction prompts to be skipped in test mode
+- Fixed bug in senate_session.py (removed unreachable return statement)
+- Added error handling specifically for CI environments
+
 ## Ongoing Development
 
 - Refining AI prompt engineering for more historically accurate speeches

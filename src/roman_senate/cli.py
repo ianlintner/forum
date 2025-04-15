@@ -189,6 +189,109 @@ def play_as_senator(
         console.print("\nGame session terminated. Type 'senate play-as-senator' to try again.\n")
 
 
+@app.command(name="simulate")
+def simulate(
+    senators: int = typer.Option(10, help="Number of senators to simulate"),
+    debate_rounds: int = typer.Option(3, help="Number of debate rounds per topic"),
+    topics: int = typer.Option(3, help="Number of topics to debate"),
+    year: int = typer.Option(-100, help="Year in Roman history (negative for BCE)"),
+    non_interactive: bool = typer.Option(False, help="Run in non-interactive mode (for CI/CD testing)")
+):
+    """Run a non-interactive simulation of the Roman Senate for testing purposes."""
+    try:
+        # Set test mode environment variable if non_interactive
+        if non_interactive:
+            os.environ['ROMAN_SENATE_TEST_MODE'] = 'true'
+            console.print("[bold yellow]Running in non-interactive test mode[/]")
+        
+        # Convert parameters to integers
+        senators_int = int(senators)
+        debate_rounds_int = int(debate_rounds)
+        topics_int = int(topics)
+        year_int = int(year)
+        
+        # Run the async simulation function with asyncio.run
+        asyncio.run(simulate_async(senators_int, debate_rounds_int, topics_int, year_int, non_interactive))
+        
+    except Exception as e:
+        console.print(f"\n[bold red]Simulation error:[/bold red] {str(e)}")
+        
+        # Add detailed traceback for debugging
+        import traceback
+        console.print("\n[bold yellow]Detailed Error Information:[/bold yellow]")
+        console.print(traceback.format_exc())
+        
+        # Exit with error code for CI/CD
+        if non_interactive:
+            sys.exit(1)
+
+async def simulate_async(senators: int = 10, debate_rounds: int = 3, topics: int = 3, year: int = -100, non_interactive: bool = False):
+    """
+    Run a non-interactive simulation for testing purposes.
+    
+    Args:
+        senators: Number of senators to simulate
+        debate_rounds: Number of debate rounds per topic
+        topics: Number of topics to debate
+        year: Year in Roman history (negative for BCE)
+        non_interactive: Whether to run in non-interactive mode
+    """
+    # Import needed modules
+    from .core.game_state import game_state
+    from .core import senators as senators_module
+    from .core import topic_generator, senate_session, vote
+    
+    # Setup test mode configurations
+    console.print(f"\n[bold cyan]ROMAN SENATE SIMULATION TEST[/] (Year: {abs(year)} BCE)")
+    
+    # Simplified game loop for automated testing
+    try:
+        # 1. Reset game state
+        game_state.reset()
+        game_state.year = year
+        game_state.test_mode = non_interactive
+        
+        # 2. Initialize senators with deterministic seed if in test mode
+        console.print("Initializing Senate with deterministic seed...")
+        if non_interactive:
+            import random
+            random.seed(42)  # Use fixed seed for reproducible tests
+        
+        senate_members = senators_module.initialize_senate(senators)
+        game_state.senators = senate_members
+        
+        # 3. Run the full senate session
+        console.print("Running Senate session...")
+        results = await senate_session.run_session(
+            senators_count=senators,
+            debate_rounds=debate_rounds,
+            topics_count=topics,
+            year=year,
+            test_mode=non_interactive
+        )
+        
+        # 4. Display simplified results
+        console.print("\n[bold green]Simulation completed successfully[/]")
+        console.print(f"Simulated {len(results)} topics with {senators} senators")
+        
+        # Output vote summary in non-interactive mode for test verification
+        for i, result in enumerate(results):
+            console.print(f"\n[bold]Topic {i+1} vote result:[/]")
+            vote_result = result['vote_result']
+            console.print(f"For: {vote_result['for']} | Against: {vote_result['against']}")
+            console.print(f"Result: {'PASSED' if vote_result['passed'] else 'REJECTED'}")
+        
+        # Exit with success code for CI/CD
+        if non_interactive:
+            console.print("[bold green]CI/CD test passed successfully[/]")
+            
+    except Exception as e:
+        console.print(f"Simulation error: {str(e)}")
+        import traceback
+        console.print(traceback.format_exc())
+        if non_interactive:
+            sys.exit(1)
+
 @app.command()
 def info():
     """Display information about the game and its systems."""
@@ -206,6 +309,7 @@ def info():
         "\n\n[bold]Commands:[/]"
         "\n• senate play - Start a new simulation game session"
         "\n• senate play-as-senator - Play as a Roman Senator (interactive mode)"
+        "\n• senate simulate - Run a non-interactive simulation (for testing)"
         "\n• senate info - Display this information"
     )
 

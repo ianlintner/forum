@@ -40,7 +40,7 @@ class SenateSession:
     - Session adjournment
     """
     
-    def __init__(self, senators_list: List[Dict], year: int, game_state: Any):
+    def __init__(self, senators_list: List[Dict], year: int, game_state: Any, test_mode: bool = False):
         """
         Initialize a new Senate session.
         
@@ -48,9 +48,10 @@ class SenateSession:
             senators_list: List of senator dictionaries with their attributes
             year: Current year in the game (negative for BCE)
             game_state: The global game state object
+            test_mode: Whether to run in non-interactive test mode
         """
-        # Set test mode if this is being run from test code
-        self.is_test_mode = 'pytest' in sys.modules
+        # Set test mode if explicitly requested or if being run from test code
+        self.is_test_mode = test_mode or 'pytest' in sys.modules
         
         # Make a deep copy of senators_list to avoid modifying original
         self.senators = [senator.copy() for senator in senators_list]
@@ -394,7 +395,7 @@ class SenateSession:
         ))
 
 
-async def run_session(senators_count: int = 10, debate_rounds: int = 3, topics_count: int = 3, year: int = None) -> List[Dict]:
+async def run_session(senators_count: int = 10, debate_rounds: int = 3, topics_count: int = 3, year: int = None, test_mode: bool = False) -> List[Dict]:
     """
     Run a complete senate session with the specified parameters.
     
@@ -403,6 +404,7 @@ async def run_session(senators_count: int = 10, debate_rounds: int = 3, topics_c
         debate_rounds: Number of debate rounds per topic
         topics_count: Number of topics to debate
         year: Year to set for the session (negative for BCE)
+        test_mode: Whether to run in non-interactive test mode
         
     Returns:
         List of results for all topics
@@ -438,7 +440,7 @@ async def run_session(senators_count: int = 10, debate_rounds: int = 3, topics_c
             selected_topics.append((topic_obj['text'], topic_obj['category']))
     
     # Create and run session
-    session = SenateSession(senate_members, year, game_state)
+    session = SenateSession(senate_members, year, game_state, test_mode)
     results = await session.run_full_session(selected_topics, debate_rounds)
     
     # Add results to game state
@@ -601,8 +603,6 @@ async def generate_speech_for_senator(self, senator: Dict) -> Dict:
         "stance": "support",
         "points": ["Point 1", "Point 2"]
     }
-    
-    return speech
 
 def process_votes(self) -> None:
     """

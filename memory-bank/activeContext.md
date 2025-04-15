@@ -34,3 +34,11 @@
 - Implemented pytest test suite with Latin function names for Roman theme
 - Fixed async implementation issues in LLM providers
 - Added proper test configuration for all core components
+
+[2025-04-14 21:45:00] - **CI/CD Pipeline and Non-Interactive Testing**
+- Added GitHub Actions workflows for automated testing
+- Created pytest.yml for running the test suite on multiple Python versions
+- Added game-simulation.yml for non-interactive game testing
+- Implemented new `simulate` CLI command with non-interactive mode
+- Enhanced SenateSession with test mode support using deterministic behavior
+- Added environment variable support (ROMAN_SENATE_TEST_MODE) for CI testing

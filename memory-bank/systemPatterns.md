@@ -265,9 +265,146 @@ async def test_generatio_textus_async():
 ```
 
 ### Documentation Integration
-The project now includes comprehensive documentation tightly integrated with the testing framework:
+The project includes comprehensive documentation tightly integrated with the testing framework:
 
 1. **Documentation Links**: Test files reference corresponding documentation to explain concepts
 2. **Historical Context**: Documentation provides Roman historical background for the tested functionality
 3. **Multilingual Support**: Both Latin (for test names) and English (for descriptions) are used
 4. **Command-Line Examples**: Documentation includes examples of running the test suite
+
+[2025-04-14 21:45:00] - **CI/CD and Automated Testing Architecture**
+
+### Continuous Integration Workflows
+The project now implements GitHub Actions workflows for automated testing and verification:
+
+```
+.github/
+└── workflows/
+    ├── pytest.yml          # Test suite workflow
+    └── game-simulation.yml # Non-interactive gameplay test
+```
+
+#### Test Suite Workflow (pytest.yml)
+This workflow runs the test suite on multiple Python versions (3.9, 3.10, 3.11) to ensure compatibility:
+
+```yaml
+name: Python Tests
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10, 3.11]
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-asyncio
+        pip install -e .
+    - name: Test with pytest
+      run: |
+        pytest
+```
+
+#### Game Simulation Workflow (game-simulation.yml)
+This workflow tests the full game functionality in non-interactive mode to verify core gameplay:
+
+```yaml
+name: Game Simulation Test
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  schedule:
+    - cron: '0 0 * * 0'  # Run weekly on Sundays at midnight
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+    - name: Run non-interactive game simulation
+      run: |
+        export ROMAN_SENATE_TEST_MODE=true
+        python -m roman_senate.cli simulate --senators 5 --debate-rounds 2 --topics 1 --non-interactive
+    - name: Archive simulation logs
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: simulation-logs
+        path: |
+          logs/
+          data/saves/
+```
+
+### Non-Interactive Testing Pattern
+The system now supports non-interactive testing through a dedicated CLI command and test mode:
+
+#### Environment-Based Configuration
+
+```python
+# Detection of test environment
+is_test_mode = os.environ.get('ROMAN_SENATE_TEST_MODE') == 'true' or 'pytest' in sys.modules
+```
+
+#### Deterministic Behavior in Test Mode
+
+```python
+# Use fixed seed for reproducible tests
+if non_interactive:
+    import random
+    random.seed(42)
+```
+
+#### CLI Extensions
+The CLI interface now includes a simulate command specifically for testing:
+
+```python
+@app.command(name="simulate")
+def simulate(
+    senators: int = typer.Option(10, help="Number of senators to simulate"),
+    debate_rounds: int = typer.Option(3, help="Number of debate rounds per topic"),
+    topics: int = typer.Option(3, help="Number of topics to debate"),
+    year: int = typer.Option(-100, help="Year in Roman history (negative for BCE)"),
+    non_interactive: bool = typer.Option(False, help="Run in non-interactive mode (for CI/CD testing)")
+):
+    """Run a non-interactive simulation of the Roman Senate for testing purposes."""
+```
+
+#### Test Mode Propagation
+Test mode is propagated through the object hierarchy to modify behavior appropriately:
+
+```python
+# Create and run session with test mode
+session = SenateSession(senate_members, year, game_state, test_mode)
+results = await session.run_full_session(selected_topics, debate_rounds)
+```
+
+### Testing Benefits
+The CI/CD integration provides several key benefits:
+
+1. **Automatic Regression Detection**: Changes that break existing functionality are detected immediately
+2. **Cross-Version Compatibility**: Tests ensure code works across multiple Python versions
+3. **Scheduled Testing**: Weekly tests catch issues with external dependencies
+4. **Non-Interactive Verification**: Core gameplay loops can be verified without manual testing
+5. **Artifact Collection**: Logs and game data are preserved for post-test analysis

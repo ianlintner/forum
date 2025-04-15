@@ -173,3 +173,24 @@
   - Latin test names (e.g., `test_responsio_completionis_openai`) with English docstrings
   - Fixed async implementation in LLM providers to ensure test compatibility
   - Added proper mocking to avoid actual API calls
+
+---
+
+[2025-04-14 21:45:00] - **Continuous Integration and Non-Interactive Testing**
+
+**Decision:** Implement GitHub Actions CI workflow and non-interactive test mode.
+
+**Rationale:**
+- Ensures code quality is maintained through automated testing
+- Provides early detection of regressions or breaking changes
+- Enables automated verification of game functionality without manual interaction
+- Simplifies testing in CI environments
+- Makes the development process more robust
+
+**Implementation:**
+- Created `.github/workflows/pytest.yml` for running test suite on multiple Python versions
+- Created `.github/workflows/game-simulation.yml` for non-interactive game testing
+- Added a new `simulate` command to CLI that supports non-interactive mode
+- Modified `SenateSession` to handle test mode with deterministic behavior
+- Added environment variable support (`ROMAN_SENATE_TEST_MODE`) for CI testing
+- Implemented proper exit codes for CI environment feedback
