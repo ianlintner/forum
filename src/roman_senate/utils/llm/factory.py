@@ -32,11 +32,18 @@ def get_llm_provider(provider_type: str = "ollama", **kwargs) -> LLMProvider:
     Raises:
         ValueError: If an unknown provider type is specified
     """
-    # Check for test mode - if enabled, use the mock provider regardless of requested type
+    # Check for explicit provider choices from environment variables
+    mock_provider = os.environ.get("ROMAN_SENATE_MOCK_PROVIDER", "").lower() == "true"
     test_mode = os.environ.get("ROMAN_SENATE_TEST_MODE", "").lower() == "true"
     
-    if test_mode:
-        logger.info("Test mode enabled, using MockProvider regardless of requested type")
+    # If ROMAN_SENATE_MOCK_PROVIDER is explicitly set, it takes precedence
+    if mock_provider:
+        logger.info("Mock provider explicitly requested via environment variable")
+        return MockProvider(**kwargs)
+    
+    # If we're in test mode and no explicit provider choice was made, use mock by default
+    if test_mode and os.environ.get("ROMAN_SENATE_MOCK_PROVIDER", "").lower() != "false":
+        logger.info("Test mode enabled, using MockProvider as default for tests")
         return MockProvider(**kwargs)
     
     logger.info(f"Creating LLM provider of type: {provider_type}")

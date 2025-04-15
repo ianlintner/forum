@@ -13,10 +13,30 @@ echo "Debate rounds per topic: $DEBATE_ROUNDS"
 echo "Number of topics: $TOPICS"
 echo "Year (negative for BCE): $YEAR"
 
-# Ensure OPENAI_API_KEY is set
-if [ -z "$OPENAI_API_KEY" ]; then
-  echo "⚠️ WARNING: OPENAI_API_KEY environment variable is not set."
-  echo "The simulation may not function correctly without this key."
+# Handle API choice
+if [ "$FORCE_MOCK_PROVIDER" = "true" ]; then
+  echo "🤖 Using mock provider for LLM responses (forced via flag)"
+  export ROMAN_SENATE_MOCK_PROVIDER=true
+elif [ "$FORCE_REAL_API" = "true" ]; then
+  echo "🌐 Using real OpenAI API for LLM responses (forced via flag)"
+  export ROMAN_SENATE_MOCK_PROVIDER=false
+  
+  # Ensure OPENAI_API_KEY is set when using real API
+  if [ -z "$OPENAI_API_KEY" ]; then
+    echo "❌ ERROR: OPENAI_API_KEY environment variable is not set."
+    echo "When using the real API (--use-real-api), an API key is required."
+    exit 1
+  fi
+else
+  # Default behavior - use mock if no API key
+  if [ -z "$OPENAI_API_KEY" ]; then
+    echo "⚠️ WARNING: OPENAI_API_KEY environment variable is not set."
+    echo "Automatically using mock provider instead."
+    export ROMAN_SENATE_MOCK_PROVIDER=true
+  else
+    echo "🔑 OPENAI_API_KEY detected - using real OpenAI API"
+    export ROMAN_SENATE_MOCK_PROVIDER=false
+  fi
 fi
 
 # Set test mode
