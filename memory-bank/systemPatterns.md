@@ -115,3 +115,65 @@ The system uses OpenAI's API for generating senator speeches. A robust fallback 
    
    # After: Safe access with default
    influence = senator.get("influence", 0.5)
+   ```
+
+[2025-04-14 20:19:00] - **Updated Package Structure**
+
+### New Module Architecture
+The codebase has been reorganized from a flat structure into a proper Python package with logical subpackages:
+
+```
+src/
+└── roman_senate/
+   ├── __init__.py        # Package initialization
+   ├── cli.py             # Command-line interface entry points
+   ├── core/              # Core game mechanics
+   │   ├── __init__.py
+   │   ├── debate.py      # Debate system core
+   │   ├── game_state.py  # Game state management
+   │   ├── senate_session.py # Full session orchestration
+   │   ├── senators.py    # Senator data models
+   │   ├── topic_generator.py # Topic generation
+   │   └── vote.py        # Voting system
+   ├── debate/            # Debate mechanics
+   │   ├── __init__.py
+   │   └── speech_generator.py # Speech generation integration
+   ├── player/            # Player interaction
+   │   ├── __init__.py
+   │   ├── game_loop.py   # Main player game loop
+   │   ├── player.py      # Player data model
+   │   ├── player_actions.py # Available player actions
+   │   ├── player_manager.py # Player state management
+   │   ├── player_ui.py   # User interface for player
+   │   └── test_player.py # Tests for player functionality
+   ├── speech/            # Speech generation system
+   │   ├── __init__.py
+   │   ├── archetype_system.py
+   │   ├── classical_structure.py
+   │   ├── historical_context.py
+   │   ├── latin_flourishes.py
+   │   ├── rhetorical_devices.py
+   │   └── speech_generator.py
+   └── utils/             # Shared utilities
+       ├── __init__.py
+       ├── config.py      # Configuration management
+       └── llm/           # LLM integration
+           ├── __init__.py
+           ├── base.py    # Base LLM interface
+           ├── factory.py # LLM provider factory
+           ├── ollama_provider.py # Ollama integration
+           └── openai_provider.py # OpenAI integration
+```
+
+The original `roman_senate_game/` module is maintained for backward compatibility while new development proceeds in the proper package structure.
+
+### Enhanced Design Patterns
+
+#### Dependency Injection
+The new package structure implements dependency injection throughout the system, allowing for better testability and component replacement.
+
+#### Interface Segregation
+LLM providers now follow the Interface Segregation Principle with a common base interface defined in `utils/llm/base.py`.
+
+#### Factory Method (Enhanced)
+The LLM provider system uses an enhanced factory method pattern in `utils/llm/factory.py` to create the appropriate LLM provider instance based on configuration.

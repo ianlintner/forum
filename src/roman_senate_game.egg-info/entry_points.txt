@@ -1,0 +1,2 @@
+[console_scripts]
+senate = roman_senate.cli:app
