@@ -61,7 +61,7 @@ jobs:
     
     - name: Archive simulation logs
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v2
       with:
         name: simulation-logs
         path: |

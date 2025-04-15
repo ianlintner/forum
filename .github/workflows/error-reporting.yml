@@ -85,7 +85,7 @@ jobs:
             });
       
       - name: Upload error report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
           name: error-report
           path: error_report.md
