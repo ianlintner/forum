@@ -197,7 +197,8 @@ def simulate(
     topics: int = typer.Option(3, help="Number of topics to debate"),
     year: int = typer.Option(-100, help="Year in Roman history (negative for BCE)"),
     non_interactive: bool = typer.Option(False, help="Run in non-interactive mode (for CI/CD testing)"),
-    provider: str = typer.Option(None, help="LLM provider to use (defaults to config)")
+    provider: str = typer.Option(None, help="LLM provider to use (defaults to config)"),
+    model: str = typer.Option(None, help="LLM model to use (defaults to config, for OpenAI use 'gpt-4' for non-turbo)")
 ):
     """
     Run a simulation of the Roman Senate with detailed speeches and voting displays.
@@ -216,10 +217,9 @@ def simulate(
         debate_rounds_int = int(debate_rounds)
         topics_int = int(topics)
         year_int = int(year)
-        
         # Run the unified simulation
         console.print("[dim]Starting Roman Senate simulation...[/]")
-        asyncio.run(run_simulation_async(senators_int, debate_rounds_int, topics_int, year_int, provider))
+        asyncio.run(run_simulation_async(senators_int, debate_rounds_int, topics_int, year_int, provider, model))
         
     except Exception as e:
         console.print(f"\n[bold red]Simulation error:[/bold red] {str(e)}")
@@ -232,7 +232,7 @@ def simulate(
         # Exit with error code for CI/CD
         if non_interactive:
             sys.exit(1)
-async def run_simulation_async(senators: int = 10, debate_rounds: int = 3, topics: int = 3, year: int = -100, provider: str = None):
+async def run_simulation_async(senators: int = 10, debate_rounds: int = 3, topics: int = 3, year: int = -100, provider: str = None, model: str = None):
     """
     Run a unified simulation of the Roman Senate using agent-driven logic with traditional display.
     
@@ -242,6 +242,7 @@ async def run_simulation_async(senators: int = 10, debate_rounds: int = 3, topic
         topics: Number of topics to debate
         year: Year in Roman history (negative for BCE)
         provider: LLM provider to use (defaults to config)
+        model: LLM model to use (defaults to config)
     """
     # Import the unified simulation here to avoid circular imports
     from .agent_simulation import run_simulation
@@ -258,7 +259,8 @@ async def run_simulation_async(senators: int = 10, debate_rounds: int = 3, topic
         debate_rounds=debate_rounds,
         topics_count=topics,
         year=year,
-        provider=provider
+        provider=provider,
+        model=model
     )
     
     # For CI/CD testing, output simplified results if in non-interactive mode

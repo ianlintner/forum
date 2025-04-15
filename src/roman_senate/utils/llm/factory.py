@@ -18,7 +18,7 @@ from .mock_provider import MockProvider
 
 logger = logging.getLogger(__name__)
 
-def get_llm_provider(provider_type: str = "ollama", **kwargs) -> LLMProvider:
+def get_llm_provider(provider_type: str = "openai", **kwargs) -> LLMProvider:
     """
     Factory function to get the appropriate LLM provider.
     
@@ -49,6 +49,11 @@ def get_llm_provider(provider_type: str = "ollama", **kwargs) -> LLMProvider:
     logger.info(f"Creating LLM provider of type: {provider_type}")
     
     if provider_type.lower() == "openai":
+        # Import here to avoid circular imports
+        from ..config import OPENAI_API_KEY
+        # Pass the API key if it's not already in kwargs
+        if 'api_key' not in kwargs and OPENAI_API_KEY:
+            kwargs['api_key'] = OPENAI_API_KEY
         return OpenAIProvider(**kwargs)
     elif provider_type.lower() == "ollama":
         return OllamaProvider(**kwargs)

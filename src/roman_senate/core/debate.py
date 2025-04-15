@@ -14,6 +14,7 @@ import random
 import asyncio
 import time
 from typing import Dict, List, Optional, Any
+import logging
 from collections import defaultdict
 from rich.panel import Panel
 from rich.text import Text
@@ -25,6 +26,9 @@ from ..utils.llm import factory as llm_factory
 from ..utils.config import LLM_PROVIDER, LLM_MODEL
 
 console = Console()
+
+# Setup logging for this module
+logger = logging.getLogger(__name__)
 
 # Relationship tracking between senators
 # Format: {senator_id: {other_senator_id: relationship_score}}
@@ -195,6 +199,56 @@ def add_to_debate_history(speech_data: Dict):
     """
     global debate_history
     debate_history.append(summarize_speech(speech_data))
+
+
+async def generate_latin_from_english(english_text: str, llm) -> str:
+    """
+    Generate authentic Classical Latin from English text.
+    
+    Args:
+        english_text: The English text to translate to Latin
+        llm: The LLM provider instance to use
+        
+    Returns:
+        Classical Latin translation of the English text
+    """
+    if not english_text:
+        return "Oratio latina non data est."
+        
+    try:
+        prompt = f"""
+        You are a Classical Latin expert specialized in translating English to authentic Classical Latin (not Medieval or Church Latin).
+        
+        Translate the following English Roman Senate speech into authentic Classical Latin of the Republican era.
+        
+        Guidelines for your translation:
+        1. Use Classical Latin vocabulary, syntax, and rhetorical devices from the Republican era
+        2. Maintain the formal oratorical style appropriate for the Roman Senate
+        3. Preserve all rhetorical devices and flourishes from the original
+        4. Keep the same sentence structure and paragraph breaks where possible
+        5. Use authentic Roman political terminology
+        6. Respect the original's tone and persuasive intent
+        7. Ensure it sounds like genuine Classical Latin that Cicero might have used
+        
+        English speech:
+        {english_text}
+        
+        Return ONLY the Latin translation, with no additional commentary or explanations.
+        """
+        
+        # Request Latin translation from LLM
+        latin_text = await llm.generate_text(
+            prompt=prompt,
+            temperature=0.7,
+            max_tokens=len(english_text.split()) * 2  # Latin might need more tokens
+        )
+        
+        return latin_text.strip()
+    except Exception as e:
+        # Log the error but don't let it crash the program
+        logging.error(f"Error generating Latin translation: {e}")
+        # Fall back to an authentic Latin phrase that indicates translation issue
+        return f"Oratio latina non confecta est propter errorem technicum. Initium orationis anglicae: {english_text[:30]}..."
 
 
 async def generate_speech(
@@ -422,25 +476,15 @@ async def generate_speech(
     
     Your stance is to {stance} the proposal.
     
-    Provide the speech in TWO languages:
-    1. LATIN version: Authentic Classical Latin using appropriate vocabulary and syntax
-    2. ENGLISH version: Same speech translated to English
-    
-    Both versions should:
-    - Reference appropriate historical events, figures, or context from {year_display} BCE
-    - Use historically accurate Roman terminology and political references for {year_display} BCE
-    - Reflect your faction's interests in the context of {year_display} BCE
-    - Be in first person
-    - Begin with a formal address appropriate to {year_display} BCE
-    - End with a clear statement of your position
-    - Include at least one reference to the current political or military situation in {year_display} BCE
-    - Match the speech length, quality level, and rhetorical flourish count specified above
-    
-    Format your response exactly like this:
-    ---LATIN---
-    [Latin version of the speech here]
-    ---ENGLISH---
-    [English version of the speech here]
+    Provide a speech in English that:
+    - References appropriate historical events, figures, or context from {year_display} BCE
+    - Uses historically accurate Roman terminology and political references for {year_display} BCE
+    - Reflects your faction's interests in the context of {year_display} BCE
+    - Is in first person
+    - Begins with a formal address appropriate to {year_display} BCE
+    - Ends with a clear statement of your position
+    - Includes at least one reference to the current political or military situation in {year_display} BCE
+    - Matches the speech length, quality level, and rhetorical flourish count specified above
     """
     
     # Start time for progress tracking
@@ -453,57 +497,42 @@ async def generate_speech(
         # Display progress message
         console.print(f"[cyan]Senator {senator['name']} is formulating an argument...[/]")
         
-        # Generate speech using the configured LLM provider
-        response_text = await llm.generate_text(prompt)
+        # Generate English speech using the configured LLM provider
+        english_text = await llm.generate_text(prompt)
         
         # Display generation time
         generation_time = time.time() - start_time
-        console.print(f"[dim]Speech generated in {generation_time:.1f} seconds[/]")
+        console.print(f"[dim]English speech generated in {generation_time:.1f} seconds[/]")
         
-        # Extract Latin and English versions from formatted response
-        latin_text = ""
-        english_text = ""
+        # Now generate the Latin version using the English text
+        console.print(f"[cyan]Translating speech to Classical Latin...[/]")
+        latin_generation_start = time.time()
         
-        # Parse the response to extract Latin and English sections
-        if (
-            response_text
-            and "---LATIN---" in response_text
-            and "---ENGLISH---" in response_text
-        ):
-            sections = response_text.split("---LATIN---")
-            if len(sections) > 1:
-                latin_english = sections[1].split("---ENGLISH---")
-                if len(latin_english) > 1:
-                    latin_text = latin_english[0].strip()
-                    english_text = latin_english[1].strip()
-        
-        # Fallback for cases where formatting is incorrect
-        if not latin_text or not english_text:
-            if "---LATIN---" not in response_text and "---ENGLISH---" not in response_text:
-                # No formatting at all - assume everything is English
-                english_text = response_text.strip()
-                latin_text = "Lorem ipsum dolor sit amet..."  # Placeholder Latin
-            elif "---LATIN---" in response_text and "---ENGLISH---" not in response_text:
-                # Only Latin marker - split at that
-                parts = response_text.split("---LATIN---", 1)
-                if len(parts) > 1:
-                    latin_text = parts[1].strip()
-                    english_text = latin_text  # Use same content for both
-            elif "---LATIN---" not in response_text and "---ENGLISH---" in response_text:
-                # Only English marker - split at that
-                parts = response_text.split("---ENGLISH---", 1)
-                if len(parts) > 1:
-                    english_text = parts[1].strip()
-                    latin_text = "Lorem ipsum dolor sit amet..."  # Placeholder Latin
+        try:
+            # Use the dedicated translation function
+            latin_text = await generate_latin_from_english(english_text, llm)
+            latin_generation_time = time.time() - latin_generation_start
+            console.print(f"[dim]Latin translation completed in {latin_generation_time:.1f} seconds[/]")
+        except Exception as e:
+            # Handle any translation errors
+            logger.error(f"Error generating Latin translation: {e}")
+            console.print(f"[bold yellow]Warning: Latin translation failed, using fallback Latin.[/]")
+            # Use a more authentic Latin placeholder
+            latin_text = f"Patres conscripti, oratio latina non potuit confici propter difficultates technicas. {english_text[:30]}..."
     
     except Exception as e:
-        console.print(f"[bold red]Error generating speech: {e}[/]")
-        # Create fallback speech if the LLM request fails
-        latin_text = "Lorem ipsum dolor sit amet, consul senatum vocat."
+        console.print(f"[bold red]Error generating English speech: {e}[/]")
+        # Create fallback English speech if the LLM request fails
         english_text = f"Senators of Rome, regarding {topic}, I {'support' if stance == 'support' else 'oppose' if stance == 'oppose' else 'need more information about'} this matter based on the interests of Rome."
-
-    # Use fallback speech if still empty
-    if not latin_text or not english_text:
+        
+        # Try to generate Latin from the fallback English
+        try:
+            console.print(f"[cyan]Attempting to translate fallback speech to Latin...[/]")
+            latin_text = await generate_latin_from_english(english_text, llm)
+        except Exception as latin_error:
+            console.print(f"[bold red]Latin translation also failed: {latin_error}[/]")
+            # More authentic fallback Latin instead of Lorem ipsum
+            latin_text = f"Patres conscripti, de {topic}, ego {'censeo hoc probandum' if stance == 'support' else 'censeo hoc reprobandum' if stance == 'oppose' else 'censeo nobis plura cognoscenda'} esse propter utilitatem rei publicae."
         # Generate fallback speech
         stance_phrases = {
             "support": [
@@ -844,7 +873,9 @@ def display_speech(senator: Dict, speech: Dict, topic: str = ""):
     stance_tag = {
         "support": "[green]SUPPORTS[/]",
         "oppose": "[red]OPPOSES[/]",
-        "neutral": "[yellow]UNDECIDED[/]"
+        "neutral": "[yellow]UNDECIDED[/]",
+        "for": "[green]SUPPORTS[/]",      # Handle "for" stance from senator_agent.py
+        "against": "[red]OPPOSES[/]"      # Handle "against" stance from senator_agent.py
     }.get(stance, "[dim]UNKNOWN[/]")
     
     stance_text = f"{senator['name']} {stance_tag} the proposal."

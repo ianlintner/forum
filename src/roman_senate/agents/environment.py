@@ -126,7 +126,14 @@ class SenateEnvironment:
             console.print(f"\n[bold cyan]DEBATE ROUND {round_num}[/]")
             
             for agent in self.agents:
-                speech_text, reasoning = await agent.generate_speech(topic_text, context)
+                try:
+                    # Try with the new two-prompt approach (returns 4 values)
+                    speech_text, reasoning, latin_text, english_text = await agent.generate_speech(topic_text, context)
+                except ValueError:
+                    # Fallback for backward compatibility (returns 2 values)
+                    speech_text, reasoning = await agent.generate_speech(topic_text, context)
+                    latin_text = None
+                    english_text = None
                 
                 # Format speech data for traditional display
                 speech_data = {
@@ -136,9 +143,9 @@ class SenateEnvironment:
                     "stance": stances[agent.name],
                     "speech": speech_text,
                     "reasoning": reasoning,
-                    # Split the speech into Latin and English if it contains "---LATIN---" markers
-                    "latin_text": self._extract_latin(speech_text),
-                    "english_text": self._extract_english(speech_text),
+                    # Handle both the two-prompt approach and backward compatibility
+                    "latin_text": latin_text if 'latin_text' in locals() else self._extract_latin(speech_text),
+                    "english_text": english_text if 'english_text' in locals() else self._extract_english(speech_text),
                     "full_text": speech_text,  # For backward compatibility
                     "key_points": reasoning.split(". ")[:2] if reasoning else [],
                     "year": self.year,
@@ -158,7 +165,9 @@ class SenateEnvironment:
                 display_speech(senator_info, speech_data, topic_text)
                 
                 # Score and display speech evaluation
-                if speech_data["english_text"]:
+                # With the two-prompt approach, we should have a dedicated english_text
+                # but fallback to the full speech if not available
+                if speech_data["english_text"] and speech_data["english_text"].strip():
                     score = score_argument(speech_data["english_text"], topic_text)
                 else:
                     score = score_argument(speech_text, topic_text)
@@ -332,9 +341,9 @@ class SenateEnvironment:
         
         # Map stances to votes for comparison
         stance_to_vote = {
-            "support": "for",
-            "oppose": "against",
-            "neutral": None  # Neutral could be any vote
+            "support": "support",
+            "oppose": "oppose",    # Updated for consistency with senator_agent.py
+            "neutral": None        # Neutral could be any vote
         }
         
         # Sort voting record by faction then senator name
@@ -363,9 +372,11 @@ class SenateEnvironment:
             }
             
             vote_format = {
-                "for": "[green]For[/]",
-                "against": "[red]Against[/]",
-                "abstain": "[yellow]Abstain[/]"
+                "support": "[green]Support[/]",
+                "oppose": "[red]Oppose[/]",
+                "abstain": "[yellow]Abstain[/]",
+                "for": "[green]Support[/]",      # For backward compatibility
+                "against": "[red]Oppose[/]"      # For backward compatibility
             }
             
             detailed_table.add_row(
@@ -496,6 +507,7 @@ class SenateEnvironment:
     def _extract_latin(self, speech_text: str) -> str:
         """
         Extract Latin text from a speech that may contain Latin/English markers.
+        With the two-prompt approach, we may receive direct Latin content or need to extract it.
         
         Args:
             speech_text: The full speech text
@@ -504,9 +516,13 @@ class SenateEnvironment:
             The Latin portion or a placeholder if not found
         """
         if not speech_text:
-            return "Lorem ipsum dolor sit amet."
+            # Return a more authentic Latin placeholder
+            return "Oratio latina non data est."
             
-        # If the speech contains the Latin marker
+        # Case 1: Direct Latin content from two-prompt approach
+        # This is handled in the run_debate method where latin_text is passed directly
+        
+        # Case 2: Legacy format with explicit markers
         if "---LATIN---" in speech_text:
             sections = speech_text.split("---LATIN---")
             if len(sections) > 1:
@@ -514,12 +530,29 @@ class SenateEnvironment:
                 if len(latin_english) > 0:
                     return latin_english[0].strip()
                     
-        # If the speech doesn't have markers, just return a placeholder
-        return "Lorem ipsum dolor sit amet."
+        # Case 3: Attempt to identify Latin-only text via linguistic markers
+        likely_latin_phrases = [
+            "Patres conscripti", "Quirites", "Senatus populusque",
+            "et ego censeo", "rei publicae", "pro bono publico"
+        ]
+        
+        # If the speech matches common Latin patterns and doesn't contain obvious English
+        likely_latin = any(phrase in speech_text for phrase in likely_latin_phrases)
+        likely_not_english = not any(word in speech_text.lower() for word in [
+            "the ", "and ", "with ", "from ", "to the", "of the", "in the"
+        ])
+        
+        if likely_latin and likely_not_english:
+            return speech_text
+                    
+        # If the speech doesn't have markers and doesn't look like Latin,
+        # provide a meaningful placeholder without truncating the English text
+        return "Oratio latina non inventa (Latin text not found). Original text in English follows:\n\n" + speech_text
         
     def _extract_english(self, speech_text: str) -> str:
         """
         Extract English text from a speech that may contain Latin/English markers.
+        With the two-prompt approach, we may receive direct English content or need to extract it.
         
         Args:
             speech_text: The full speech text
@@ -529,20 +562,41 @@ class SenateEnvironment:
         """
         if not speech_text:
             return ""
-            
-        # If the speech contains the English marker
+        
+        # Case 1: Direct English content from two-prompt approach
+        # This is handled in the run_debate method where english_text is passed directly
+        
+        # Case 2: Legacy format with explicit markers
         if "---ENGLISH---" in speech_text:
             sections = speech_text.split("---ENGLISH---")
             if len(sections) > 1:
                 return sections[1].strip()
                 
-        # If no English marker, check if there's only a Latin marker
+        # Case 3: If no English marker, check if there's only a Latin marker
         elif "---LATIN---" in speech_text:
             sections = speech_text.split("---LATIN---")
             if len(sections) > 1 and len(sections) < 3:  # Should have at most 2 sections
-                return speech_text  # Return the whole thing as English if unclear
+                # If we can split at Latin marker, assume there's English too somewhere
+                english_part = sections[0] if len(sections[0]) > len(sections[1]) else sections[1]
+                return english_part.strip()
+        
+        # Case 4: Check if this text is likely Latin-only
+        likely_latin_phrases = [
+            "Patres conscripti", "Quirites", "Senatus populusque",
+            "et ego censeo", "rei publicae", "pro bono publico"
+        ]
+        
+        # If the speech matches common Latin patterns and doesn't contain obvious English
+        likely_latin = any(phrase in speech_text for phrase in likely_latin_phrases)
+        likely_not_english = not any(word in speech_text.lower() for word in [
+            "the ", "and ", "with ", "from ", "to the", "of the", "in the"
+        ])
+        
+        # If this appears to be Latin-only text, return an empty string
+        if likely_latin and likely_not_english:
+            return ""
                 
-        # If no markers at all, just return the text as English
+        # Case 5: With the new approach, if no markers at all and not Latin, the text is likely English
         return speech_text
         
     def _clean_display_text(self, text: str) -> str:

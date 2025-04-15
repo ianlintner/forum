@@ -108,4 +108,4 @@ class OpenAIProvider(LLMProvider):
         except Exception as e:
             logger.error(f"Error with OpenAI async completion: {e}")
             return f"[Error generating text: {str(e)}]"
-        return self.generate_completion(prompt, **kwargs)
+        # The following line would never be reached - removing it

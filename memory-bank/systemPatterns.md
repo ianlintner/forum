@@ -2,6 +2,33 @@
 
 ## Architecture Patterns
 
+### Two-Prompt Approach for Language Generation (Added 2025-04-15)
+The system now implements a sequential two-prompt approach for generating content in multiple languages:
+
+#### Key Components
+- **Sequential Generation**: First generate content in one language, then translate to another
+- **Specialized Prompting**: Dedicated prompts optimized for each language's characteristics
+- **Backwards Compatibility**: Support for both single-prompt and two-prompt approaches
+- **Error Resilience**: Proper handling when one language generation fails
+
+#### Implementation Pattern
+```python
+# Generate English content first
+english_content = generate_english_speech(context, senator, topic)
+
+# Then translate to Latin in a separate prompt
+latin_content = translate_to_latin(english_content)
+
+# Return both contents separately for direct use
+return combined_text, reasoning, latin_content, english_content
+```
+
+#### Benefits
+- Better quality for each language generation task
+- Fallback capability if one language fails
+- Specialized optimization for classical Latin
+- Clearer separation of concerns in the code
+
 ### Agent-Driven Architecture (Added 2025-04-15)
 The system now implements an agent-driven architecture for autonomous senator behavior:
 
@@ -40,6 +67,32 @@ The system now implements an agent-driven architecture for autonomous senator be
 [2025-04-13 23:23:25] - Updated architecture includes components for a complete historical Roman Senate session flow, including opening ceremonies, political maneuvering, and formal procedures.
 
 ### Key Design Patterns
+
+#### Terminology Standardization Pattern (Added 2025-04-15)
+The codebase implements consistent terminology patterns for critical concepts:
+
+```python
+# Standard stance terminology across all modules
+STANCE_SUPPORT = "support"    # Senator favors the proposal
+STANCE_OPPOSE = "oppose"      # Senator opposes the proposal
+STANCE_NEUTRAL = "neutral"    # Senator is undecided
+
+# Backward compatibility mappings
+STANCE_MAPPINGS = {
+    "for": STANCE_SUPPORT,
+    "against": STANCE_OPPOSE,
+    "support": STANCE_SUPPORT,
+    "oppose": STANCE_OPPOSE,
+    "neutral": STANCE_NEUTRAL
+}
+
+# Position display formatting
+POSITION_DISPLAY = {
+    STANCE_SUPPORT: "SUPPORTS",
+    STANCE_OPPOSE: "OPPOSES",
+    STANCE_NEUTRAL: "IS NEUTRAL on"
+}
+```
 
 #### Command Pattern
 The application uses Typer to implement a command-based interface, following the Command pattern for user interactions.
@@ -95,6 +148,40 @@ The game state observes changes in debate and voting, updating the history accor
 12. Session concludes with formal adjournment
 
 ## API Integration
+
+### LLM Provider System (Enhanced 2025-04-15)
+The system implements a flexible LLM provider architecture with default configuration optimized for classical Latin:
+
+#### Provider Selection
+```python
+# Default provider is OpenAI
+DEFAULT_PROVIDER = os.getenv("LLM_PROVIDER", "openai")
+
+# Default to production mode (non-turbo) for better Latin
+DEV_MODE = os.getenv("DEV_MODE", "False").lower() in ("true", "1", "t")
+
+# Model selection based on mode
+GPT_MODEL_DEV = "gpt-4-turbo-preview"  # Faster but less accurate Latin
+GPT_MODEL_PROD = "gpt-4"  # Better classical Latin capabilities
+DEFAULT_GPT_MODEL = GPT_MODEL_DEV if DEV_MODE else GPT_MODEL_PROD
+```
+
+#### Provider Factory
+```python
+def create_llm_provider(provider_type=None, api_key=None, model=None):
+    """Create an LLM provider based on configuration.
+    
+    Arguments:
+        provider_type: Type of provider (openai, ollama, mock)
+        api_key: API key for the provider
+        model: Specific model to use
+    
+    Returns:
+        LLMProvider instance
+    """
+    # Provider selection logic
+    # Ensures GPT-4 (non-turbo) is used for optimal Latin
+```
 
 The system uses OpenAI's API for generating senator speeches. A robust fallback mechanism ensures the game can function even when API is unavailable by using pre-defined templates and randomization.
 
@@ -537,3 +624,43 @@ The error reporting system integrates with the development workflow by:
 3. Applying appropriate labels for filtering and categorization
 4. Providing relevant logs and artifacts for debugging
 5. Enabling developers to quickly identify and fix test failures
+
+[2025-04-15 02:35:00] - **Topic Parsing and Data Validation**
+
+### String and JSON Processing Patterns
+
+The system implements robust string cleaning and JSON validation patterns to handle LLM-generated content:
+
+#### Multi-Layer Validation Strategy
+- **Input Validation**: Sanitizes and validates LLM-generated responses before processing
+- **Parsing Fallbacks**: Multiple parsing strategies for different types of malformed JSON
+- **Output Cleaning**: Ensures clean display format regardless of input quality
+- **Cache Repair**: Utilities for fixing corrupted persistent data
+
+#### String Cleaning Techniques
+```python
+def clean_topic_string(topic: str) -> str:
+    # Handle various types of JSON artifacts
+    if topic.startswith('[') or '\\\"' in topic:
+        # Try JSON parsing first
+        try:
+            if topic.startswith('['):
+                parsed = json.loads(topic)
+                if isinstance(parsed, list):
+                    return "; ".join(str(item) for item in parsed)
+        except:
+            pass
+            
+    # Manual cleaning as fallback
+    cleaned = topic.lstrip('[ \'"').rstrip('] \'",.')
+    cleaned = cleaned.replace('\\"', '"').replace('\\\'', '\'')
+    return cleaned.strip()
+```
+
+#### Cache Management
+- Automatic validation when loading cached data
+- Recursive cleaning of nested data structures
+- Backup creation before applying fixes
+- Dedicated repair utility for corrupted cache entries
+
+These patterns significantly improve system resilience when handling unpredictable LLM outputs, ensuring consistent user experience even when underlying API responses contain formatting issues.

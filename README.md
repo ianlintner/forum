@@ -47,7 +47,13 @@ The Roman Senate Game is an immersive political simulation set in the late Roman
    ```
 
 3. Configure your LLM provider:
-   The game uses an LLM (Large Language Model) for speech generation. By default, it will use OpenAI or Ollama depending on your configuration.
+   The game uses an LLM (Large Language Model) for speech generation. By default, it uses OpenAI's GPT-4 (non-turbo) model for optimal Latin generation. Simply set your OPENAI_API_KEY environment variable:
+   
+   ```bash
+   export OPENAI_API_KEY=your_api_key_here
+   ```
+   
+   Alternative LLM providers can be configured if needed. See [LLM Provider Configuration](docs/llm_providers.md) for details.
 
 ## Playing the Game
 

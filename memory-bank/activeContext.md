@@ -1,7 +1,18 @@
-
 # Active Development Context
 
 ## Current Focus
+
+[2025-04-15 03:52:00] - **Latin Generation and Display Improvements**
+- Implemented two-prompt approach for Latin generation (separate English and Latin)
+- Fixed stance terminology standardization across the codebase
+- Enhanced error handling for Latin text display
+- Made GPT-4 (non-turbo) the default for optimal Latin generation
+
+[2025-04-15 02:35:00] - **Topic Parsing and Display Improvements**
+- Implemented robust string cleaning for topic titles and descriptions
+- Added JSON validation for topic structure and content
+- Created utilities for fixing corrupted topic cache entries
+- Enhanced error handling for malformed LLM responses
 
 [2025-04-15 02:16:54] - **Agent-Driven Architecture Development**
 - Implemented autonomous senator agents with memory, goals, and decision-making
@@ -17,13 +28,20 @@
 
 ## Recent Changes
 
+[2025-04-15 03:52:00] - Implemented two-prompt approach for Latin generation
+[2025-04-15 03:45:00] - Fixed senator stance terminology standardization
+[2025-04-15 03:35:00] - Enhanced Latin text extraction and error handling
+[2025-04-15 03:20:00] - Made GPT-4 (non-turbo) the default configuration
+[2025-04-15 02:35:00] - Implemented robust string cleaning and JSON validation for topics
+[2025-04-15 02:30:00] - Created fix_topics_cache.py utility for repairing corrupted topic entries
+[2025-04-15 02:20:00] - Added comprehensive error handling for malformed LLM responses
 [2025-04-15 02:14:42] - Unified simulation approach combining traditional presentation with agent-driven logic
 [2025-04-15 02:04:22] - Fixed OpenAI topic generation JSON parsing issues
 [2025-04-15 01:27:37] - Fixed topic parsing issues in agent simulation
-[2025-04-15 00:21:32] - Implemented agent-driven architecture for autonmous senator behaviors
+[2025-04-15 00:21:32] - Implemented agent-driven architecture for autonomous senator behaviors
 [2025-04-14 00:51:30] - Added player senator detection and interactive features to debate.py
 [2025-04-14 00:32:45] - Implemented complete player management system
-[2025-04-13 23:22:20] - Created core debate system with AI speech generation 
+[2025-04-13 23:22:20] - Created core debate system with AI speech generation
 [2025-04-13 23:22:20] - Implemented full Roman Senate workflow
 
 ## Open Questions/Issues

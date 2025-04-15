@@ -1,158 +1,123 @@
-# Project Progress
+# Project Progress Log
 
-## Completed Tasks
+## Major Milestones
 
-[2025-04-15 02:16:54] - **Unified Agent-Driven Simulation Experience**
-- Merged traditional presentation with agent-driven logic
-- Created single unified simulation approach
-- Enhanced output with rich formatting and relationship visualization
-- Fixed OpenAI topic generation JSON parsing issues
-- Streamlined the simulation command interface
+[2025-04-15 03:52:00] - **Latin Generation and Display Improvements**
+- Implemented two-prompt approach for speech generation:
+  - First prompt generates English content
+  - Second prompt translates English to authentic classical Latin
+- Fixed stance terminology standardization ("support"/"oppose"/"neutral") across codebase
+- Resolved "UNKNOWN" position display in senator stance indicators
+- Enhanced error handling in Latin text display
+- Made GPT-4 (non-turbo) the default for optimal Latin generation
+- Overhauled environment code to handle separate Latin/English processing
 
-[2025-04-15 01:16:36] - **Enhanced CLI and Fixed Display Issues**
-- Updated CLI to support agent-driven simulation
-- Made agent-driven simulation the default experience
-- Fixed topic parsing and display issues in agent simulation
-- Added detailed agent reasoning to simulation output
-- Improved error handling for different simulation modes
+[2025-04-15 03:20:00] - **OpenAI GPT-4 Configuration**
+- Evaluated different GPT models for classical Latin generation quality
+- Determined GPT-4 (non-turbo) is optimal for Latin grammar, vocabulary and style
+- Updated configuration systems to use GPT-4 without requiring command-line parameters
+- Enhanced API key handling for better OpenAI integration
+- Created comprehensive documentation for OpenAI configuration
+- Updated CLI to support explicit model selection when needed
 
-[2025-04-15 00:21:32] - **Implemented Agent-Driven Architecture**
-- Created SenatorAgent class with memory and decision-making
-- Implemented AgentMemory system for tracking experiences and opinions
-- Built SenateEnvironment for agent interactions and event propagation
-- Developed agent-driven debate with emergent speaking order
-- Added goals and intentions for autonomous senator behavior
+[2025-04-15 02:35:00] - **Topic Parsing and JSON Validation Improvements**
+- Created robust string cleaning functions for topic parsing
+- Implemented multiple JSON validation strategies
+- Fixed malformed JSON handling in topic cache
+- Created utility for repairing corrupted topic cache entries
+- Added comprehensive error handling for LLM-generated content
+- Enhanced topic display with proper formatting
 
-[2025-04-14 00:51:00] - **Integrated Player Interaction with Debate System**
-- Modified debate.py to detect when player senator's turn comes up
-- Added functionality to generate speech options for the player
-- Implemented presentation of options to player and processing of choices
-- Added interjection opportunity detection during other senators' speeches
-- Created helper functions for player speech handling and interjections
-- Integrated with player_manager.py, player_ui.py and speech_options_generator.py
-- Preserved existing functionality for AI senators while adding interactivity
+[2025-04-15 02:16:54] - **Agent-Driven Architecture Implementation**
+- Created autonomous senator agents with memory and goals
+- Built environment for agent interactions
+- Implemented agent memory for tracking experiences
+- Developed dynamic relationship evolution between senators
+- Unified traditional presentation layer with agent-driven logic
+- Created comprehensive logging of agent activities
+- Fixed topic parsing issues for better display
 
-[2025-04-13 18:25:23] - **Implemented AI-Generated Debate Speeches**
-- Created debate.py module with speech generation functionality
-- Integrated with OpenAI API for authentic Roman-style speeches
-- Implemented fallback mechanisms for offline play
-- Added speech display with appropriate formatting
+[2025-04-15 00:10:00] - **Mock Provider Implementation**
+- Created MockProvider class for testing without API dependencies
+- Implemented command-line flags for provider selection
+- Added environment variable support for configuration
+- Integrated with the GitHub Actions workflow system
+- Updated documentation with mock provider options
 
-[2025-04-13 18:25:23] - **Added Plain English Position Summaries**
-- Implemented generate_position_summary function to explain senator positions
-- Added color-coded stance indicators (FOR/AGAINST/UNDECIDED)
-- Included faction motivation explanations
-- Integrated personality trait influences on positions
+[2025-04-14 21:45:00] - **CI/CD Pipeline Setup**
+- Created GitHub Actions workflows for automated testing
+- Implemented non-interactive testing capabilities
+- Added test mode with deterministic behavior for CI
+- Created comprehensive test result collection
+- Integrated error reporting for failed workflows
 
-[2025-04-13 18:25:23] - **Enhanced Voting Results Display**
-- Added detailed voting breakdown table
-- Implemented comparison between debate stance and final vote
-- Created visual indicators for swayed senators
-- Added faction information to voting results
+[2025-04-14 21:35:00] - **Documentation Enhancement**
+- Created comprehensive LLM provider configuration guide
+- Added historical context documents
+- Implemented test suite with Latin function names
+- Fixed API provider documentation
+- Enhanced README with clear usage instructions
 
-[2025-04-13 23:22:20] - **Implemented Complete Roman Senate Flow**
-- Created historically accurate senate session structure
+[2025-04-14 20:18:00] - **Package Structure Reorganization**
+- Refactored code from flat structure to proper Python package
+- Organized functionality into logical subpackages
+- Created proper package installation with pyproject.toml
+- Added command-line entry points
+- Maintained backward compatibility
+
+[2025-04-14 00:51:30] - **Player Interaction System**
+- Integrated player interaction with debate system
+- Implemented speech options for player
+- Added interjection mechanics
+- Created player UI components
+- Developed score calculation for player speeches
+
+[2025-04-13 23:22:20] - **Complete Senate Session Flow**
+- Implemented historically accurate Roman Senate procedures
 - Added opening ceremonies with religious observances
-- Implemented attendance and seating arrangements by rank
-- Added formal introduction of agenda items (Relatio)
-- Implemented backroom political dealings between senators
-- Enhanced debate with multiple rounds and interjections
-- Added voting session with faction analysis
-- Created formal session conclusion with adjournment
+- Created attendance tracking and seating by rank
+- Implemented formal agenda introduction
+- Enhanced backroom political dealings
+- Added voting session with detailed results
+- Created formal session conclusion
 
-[2025-04-13 23:22:20] - **Fixed Critical Bugs in Game Flow**
-- Fixed missing traits error in debate.py:
-  - Added safe trait access with default values
-  - Used fallback values for eloquence (0.5), loyalty (0.5), and corruption (0.1)
-  - Ensured speech analysis works correctly for all senators
-- Fixed missing influence error in senate_session.py:
-  - Added safe access to senator influence with default value (0.5)
-  - Ensured voting phase completes successfully after debates
+[2025-04-13 18:25:07] - **AI Speech Generation**
+- Implemented LLM-based speech generation
+- Created fallback mechanisms for offline play
+- Added stance-based speech coloring
+- Enhanced speeches with Latin phrases
+- Implemented detailed position summaries
 
-[2025-04-14 00:32:45] - **Implemented Player Management System**
-- Created player_manager.py module for player senator selection and tracking
-- Added functions to initialize a random player-controlled senator
-- Implemented player senator state and game progress tracking
-- Created senator introduction generator with faction-specific context
-- Added interaction history tracking for player actions
-- Implemented safe trait access with defensive programming patterns
-- Added utility functions for storing and retrieving player notes
+## Tasks In Progress
 
-[2025-04-14 20:18:00] - **Implemented Package Structure Reorganization**
-- Reorganized code from flat structure to proper Python package
-- Created src/roman_senate/ as main package with structured submodules
-- Split functionality into logical subpackages:
-  - core/ - Core game mechanics (game_state, senate_session, senators, debate, vote)
-  - player/ - Player interaction components (player, player_manager, player_ui, game_loop)
-  - speech/ - Speech generation system (all speech generation modules)
-  - debate/ - Debate mechanics and speech generation integration
-  - utils/ - Shared utilities (config, LLM providers, etc.)
-- Implemented CLI module with entry points for different game modes
-- Created proper package installation with pyproject.toml and setup.py
-- Set up entry points for command-line usage
-- Maintained backward compatibility with original roman_senate_game/ module
+1. **Agent Memory Enhancement**
+   - Add multi-session memory persistence
+   - Implement more sophisticated relationship modeling
+   - Create dynamic personality evolution
 
-[2025-04-14 21:35:00] - **Enhanced Documentation and Testing**
-- Created comprehensive historical context documentation:
-  - Roman Senate History with timeline and key developments
-  - Famous Roman Orators and rhetorical techniques
-  - Roman Political Factions explaining Optimates and Populares
-  - Roman Senate Traditions and procedures
-- Implemented LLM Provider Configuration Guide with setup instructions for OpenAI and Ollama
-- Added ASCII art of the Roman Forum to the README
-- Updated all CLI command examples to use the new package structure
-- Implemented pytest test suite with Latin function names:
-  - Created test files for LLM providers, speech generation, topic generation, and senate sessions
-  - Used Latin test names (e.g., test_responsio_completionis_openai) with English docstrings
-  - Added proper fixtures, mocking, and parameterization
-  - Fixed async implementation issues in the LLM providers
-  - Created SenateSession adapter methods for test compatibility
-- Added proper pytest configuration files and directory structure
+2. **Speech Generation Refinement**
+   - Further enhance classical Latin translation quality
+   - Add more rhetorical devices from Roman oratory
+   - Implement speech structure based on specific orators (Cicero, Caesar, etc.)
 
-[2025-04-14 21:45:00] - **Added CI/CD and Non-Interactive Testing Capabilities**
-- Created GitHub Actions workflow configurations:
-  - pytest.yml for running test suite on multiple Python versions
-  - game-simulation.yml for automated non-interactive gameplay testing
-- Implemented non-interactive simulation mode in cli.py:
-  - Added new `simulate` command with non-interactive flag
-  - Implemented environment variable support for CI testing (ROMAN_SENATE_TEST_MODE)
-  - Added proper exit codes for CI environment feedback
-- Enhanced senate_session.py with test mode support:
-  - Added test_mode parameter to constructors and methods
-  - Implemented deterministic behavior for reproducible testing
-  - Created simplified outputs suitable for automated verification
-  - Modified user interaction prompts to be skipped in test mode
-- Fixed bug in senate_session.py (removed unreachable return statement)
-- Added error handling specifically for CI environments
+3. **User Interface Improvements**
+   - Create more intuitive player controls
+   - Add visualization of senator relationships
+   - Implement better feedback for player actions
 
-## Ongoing Development
+## Upcoming Tasks
 
-- Refining AI prompt engineering for more historically accurate speeches
-- Exploring deeper personality traits for senators
-- Considering game modes with different faction distributions
-- Addressing bug in logging_utils.py related to time tracking
-- Integrating player_manager.py with main game flow
+1. **Coalition Formation Mechanics**
+   - Add dynamic coalition building between senators
+   - Implement strategic voting blocks
+   - Create backroom dealing mechanics
 
-## Current Issues
+2. **Historical Events Integration**
+   - Add timeline of actual Roman Republic events
+   - Implement historical figures as special senators
+   - Create crisis events based on real history
 
-[2025-04-13 21:27:01] - **Bug in logging_utils.py Time Tracking**
-- Identified TypeError: `unsupported operand type(s) for -: 'float' and 'NoneType'` during voting phase
-- Error occurs in log_response method when calculating elapsed time (time.time() - self.start_time)
-- Issue appears when self.start_time is None but time calculation is attempted
-- Game continues functioning despite errors due to exception handling
-- Fix will require proper initialization or null checking of start_time variable
-
-## Future Features Roadmap
-
-- Implement formal BDI (Beliefs, Desires, Intentions) model for more sophisticated agent reasoning
-- Add multi-session memory for senators to learn and adapt across multiple debates
-- Enhance coalition formation and political maneuvering strategies
-- Historical events that influence debates
-- More complex faction relationships and alliances
-- Enhanced visual presentation with maps and senator portraits
-- Save/load game functionality
-- Dynamic senator relationships that evolve during gameplay
-- Expand political maneuvering with more complex deal mechanics
-- Add more detailed faction-specific objectives and victory conditions
-- Player character progression with unlockable special abilities
-- Senator career paths and historical impact tracking
+3. **Performance Optimization**
+   - Reduce API calls through caching
+   - Optimize agent memory management
+   - Implement asynchronous processing for non-critical operations

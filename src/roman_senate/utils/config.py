@@ -37,20 +37,20 @@ LOG_BACKUP_COUNT = 5
 # LLM Provider Configuration
 # -------------------------
 # Which LLM provider to use: "openai" or "ollama"
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai").lower()
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai").lower()  # Force OpenAI as the default provider
 
 # OpenAI configuration
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # Development mode flag (set to False for production)
 # This controls which GPT model is used by default
-DEV_MODE = os.getenv("DEV_MODE", "True").lower() in ("true", "1", "t")
+DEV_MODE = os.getenv("DEV_MODE", "False").lower() in ("true", "1", "t")  # Default to production mode for non-turbo GPT-4
 
 # GPT Model configuration
 GPT_MODEL_DEV = "gpt-4-turbo-preview"  # Faster model for development
-GPT_MODEL_PROD = "gpt-4"               # Standard model for production
+GPT_MODEL_PROD = "gpt-4"               # Standard model for production (non-turbo GPT-4)
 
-# Default OpenAI model based on environment
+# Default OpenAI model based on environment - use GPT_MODEL_PROD (non-turbo) by default
 DEFAULT_GPT_MODEL = GPT_MODEL_DEV if DEV_MODE else GPT_MODEL_PROD
 
 # Ollama Configuration

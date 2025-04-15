@@ -48,6 +48,13 @@ async def run_simulation(
         game_state.year = year
         
         # 2. Get LLM provider
+        # Import here to avoid circular imports
+        from .utils.config import DEFAULT_GPT_MODEL
+        
+        # Ensure model is set, using default if not specified
+        if model is None:
+            model = DEFAULT_GPT_MODEL
+        
         # Handle None provider by not passing it to avoid NoneType error
         if provider is None:
             llm_provider = get_llm_provider(model_name=model)
@@ -56,7 +63,7 @@ async def run_simulation(
         
         # Display provider info (get provider type from class name to avoid attribute errors)
         provider_type = llm_provider.__class__.__name__.replace('Provider', '')
-        model_info = getattr(llm_provider, 'model_name', 'default model')
+        model_info = model  # Use the actual model name we're passing
         console.print(f"\n[bold green]✓[/] LLM integration is working. Using provider: [bold cyan]{provider_type}[/] with model: [bold cyan]{model_info}[/]")
         
         # 3. Display welcome banner
