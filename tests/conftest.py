@@ -75,20 +75,25 @@ def mock_ollama_response():
 @pytest.fixture
 def mock_openai_provider(mock_openai_response):
     """Create a mocked OpenAI provider that doesn't make actual API calls."""
-    # First patch the _ModuleClient to avoid the API key check
-    with patch('openai._ModuleClient.__init__', return_value=None) as mock_init:
-        # Then patch the chat.completions.create method
-        with patch('openai.chat.completions.create') as mock_create:
-            mock_create.return_value = mock_openai_response
-            
-            # Setup for async generate_text
-            async def mock_async_generate(*args, **kwargs):
-                return mock_openai_response.choices[0].message.content
-                
-            provider = OpenAIProvider(model_name="gpt-4", api_key="mock-key")
-            provider.generate_text = mock_async_generate
-            
-            yield provider
+    # Create the provider first
+    provider = OpenAIProvider(model_name="gpt-4", api_key="mock-key")
+    
+    # Mock both completion methods directly
+    def mock_generate_completion(*args, **kwargs):
+        return "Mocked OpenAI response content"
+        
+    def mock_generate_chat_completion(*args, **kwargs):
+        return mock_openai_response
+    
+    async def mock_async_generate(*args, **kwargs):
+        return "Mocked OpenAI response content"
+    
+    # Replace the provider's methods with our mocks
+    provider.generate_completion = mock_generate_completion
+    provider.generate_chat_completion = mock_generate_chat_completion
+    provider.generate_text = mock_async_generate
+    
+    yield provider
 
 
 @pytest.fixture

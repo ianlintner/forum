@@ -152,13 +152,14 @@ class SenateEnvironment:
             "vote_result": vote_results
         }
     
-    async def run_vote(self, topic_text: str, context: Dict):
+    async def run_vote(self, topic_text: str, context: Dict, testing: bool = False):
         """
         Run a vote on the current topic.
         
         Args:
             topic_text: The topic text
             context: Additional context
+            testing: Flag to indicate if running in test mode (disables random abstention)
             
         Returns:
             Dict containing vote results
@@ -203,8 +204,8 @@ class SenateEnvironment:
                 
                 # Map the agent's vote to "for", "against", or "abstain"
                 # The agent system only returns "for" or "against", but we'll add
-                # a small chance of abstention for realism
-                if random.random() < 0.05:  # 5% chance to abstain
+                # a small chance of abstention for realism (unless in testing mode)
+                if not testing and random.random() < 0.05:  # 5% chance to abstain
                     final_vote = "abstain"
                 else:
                     final_vote = vote

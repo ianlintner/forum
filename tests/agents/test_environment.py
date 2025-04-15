@@ -66,8 +66,8 @@ class TestEnvironment:
             vote_returns = ["support", "oppose", "support"]
             agent.vote = AsyncMock(return_value=(vote_returns[i], "Mock reasoning"))
         
-        # Run the vote
-        result = await environment.run_vote(sample_topic["text"], {})
+        # Run the vote with testing flag to disable random abstentions
+        result = await environment.run_vote(sample_topic["text"], {}, testing=True)
         
         # Check that votes were properly mapped
         assert result["votes"]["for"] == 2  # 2 "support" votes should map to "for"

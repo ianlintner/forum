@@ -120,13 +120,17 @@ def load_cached_topics() -> Dict:
             
         # Clean any JSON artifacts from the cached topics
         cleaned_cache = {}
-        for year, topics_dict in cached_topics.items():
-            cleaned_cache[year] = clean_topics_dict(topics_dict)
+        for year, topics_data in cached_topics.items():
+            # Check if the value is a dictionary that needs cleaning
+            if isinstance(topics_data, dict):
+                cleaned_cache[year] = clean_topics_dict(topics_data)
+            else:
+                # If it's not a dictionary, keep it as is (for test compatibility)
+                cleaned_cache[year] = topics_data
             
         return cleaned_cache
     except Exception as e:
         console.print(f"[bold yellow]Warning: Could not load topics cache: {e}[/]")
-        return {}
         return {}
 
 

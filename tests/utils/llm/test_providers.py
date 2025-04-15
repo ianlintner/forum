@@ -95,14 +95,17 @@ def test_tractatio_erroris_openai():
     (Test error handling)
     """
     # Create a provider that will raise an error
-    with patch('openai._ModuleClient.__init__', return_value=None):
-        with patch('openai.chat.completions.create') as mock_create:
-            mock_create.side_effect = Exception("API error")
-            provider = OpenAIProvider(model_name="gpt-4", api_key="invalid-key")
-            
-            # Test completion with error
-            result = provider.generate_completion("Test prompt")
-            assert "[Error generating text:" in result
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.side_effect = Exception("API error")
+    
+    # Patch OpenAI client creation
+    with patch('openai.OpenAI', return_value=mock_client):
+        # Create provider with mock client
+        provider = OpenAIProvider(model_name="gpt-4", api_key="invalid-key")
+        
+        # Test completion with error
+        result = provider.generate_completion("Test prompt")
+        assert "[Error generating text:" in result
         
         # Test chat completion with error
         chat_result = provider.generate_chat_completion([{"role": "user", "content": "Test"}])
@@ -194,13 +197,15 @@ def test_conformatio_interfacii(mock_ollama_provider):
     Test that both providers conform to the same interface.
     (Test interface conformity)
     """
-    # Using the patched _ModuleClient to avoid API key check
-    with patch('openai._ModuleClient.__init__', return_value=None):
-        # Mock the OpenAI completion response
-        with patch('openai.chat.completions.create') as mock_create:
-            mock_response = MagicMock()
-            mock_response.choices = [MagicMock(message=MagicMock(content="Mocked OpenAI response"))]
-            mock_create.return_value = mock_response
+    # Create a mock client with response
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock(message=MagicMock(content="Mocked OpenAI response"))]
+    
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.return_value = mock_response
+    
+    # Using patched OpenAI client
+    with patch('openai.OpenAI', return_value=mock_client):
             
             # Create an OpenAI provider
             openai_provider = OpenAIProvider(model_name="gpt-4", api_key="mock-key")
