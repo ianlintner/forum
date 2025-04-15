@@ -317,10 +317,16 @@ class SenateSession:
             # Log the result
             self._log_event("Topic Completed", f"Topic: {topic}, Result: {vote_result['outcome']}")
             
-            # If not the last topic, ask to continue
+            # If not the last topic, ask to continue (only in interactive mode)
             if i < len(topics):
                 console.print()
-                continue_session = Confirm.ask("Continue to the next topic?", default=True)
+                # Skip prompt in test/non-interactive mode
+                if self.is_test_mode:
+                    continue_session = True
+                    console.print("[yellow]Automatically continuing to next topic (non-interactive mode)[/]")
+                else:
+                    continue_session = Confirm.ask("Continue to the next topic?", default=True)
+                
                 if not continue_session:
                     # End the session early
                     console.print("[yellow]The Senate adjourns early at the discretion of the presiding magistrate.[/]")

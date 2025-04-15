@@ -278,8 +278,19 @@ async def simulate_async(senators: int = 10, debate_rounds: int = 3, topics: int
         for i, result in enumerate(results):
             console.print(f"\n[bold]Topic {i+1} vote result:[/]")
             vote_result = result['vote_result']
-            console.print(f"For: {vote_result['for']} | Against: {vote_result['against']}")
-            console.print(f"Result: {'PASSED' if vote_result['passed'] else 'REJECTED'}")
+            # Handle different vote result formats
+            if 'for' in vote_result and 'against' in vote_result:
+                console.print(f"For: {vote_result['for']} | Against: {vote_result['against']}")
+            elif 'outcome' in vote_result:
+                console.print(f"Outcome: {vote_result['outcome']}")
+            else:
+                console.print(f"Vote details: {vote_result}")
+                
+            # Check result/passed status
+            if 'passed' in vote_result:
+                console.print(f"Result: {'PASSED' if vote_result['passed'] else 'REJECTED'}")
+            elif 'outcome' in vote_result:
+                console.print(f"Result: {vote_result['outcome']}")
         
         # Exit with success code for CI/CD
         if non_interactive:
