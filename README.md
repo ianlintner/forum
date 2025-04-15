@@ -130,8 +130,6 @@ This mode offers a more engaging experience where your decisions directly impact
 
 The Roman Senate Game is built with a modular architecture that separates core gameplay components from user interface and player interaction systems.
 
-![System Architecture](docs/images/system_architecture.png)
-
 ### Key Components
 
 ```
@@ -194,3 +192,8 @@ For more detailed information about the game components and architecture, see th
 ## License
 
 [MIT License](LICENSE)
+
+## Inspiration
+https://en.wikipedia.org/wiki/Caesar_III
+
+

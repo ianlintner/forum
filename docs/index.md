@@ -16,6 +16,9 @@ Welcome to the Roman Senate Game documentation. This guide provides comprehensiv
 | [Interactive Mode Guide](interactive_mode.md) | Detailed information about playing as a Roman senator |
 | [Speech Generation Framework](speech_generation.md) | Documentation of the sophisticated speech generation system |
 | [System Architecture](architecture.md) | Technical documentation for developers interested in the code structure |
+| [Roman Senate History](roman_senate_history.md) | Comprehensive history and evolution of the Roman Senate with timeline |
+| [Famous Roman Orators](famous_roman_orators.md) | Profiles of great Roman speakers and their rhetorical techniques |
+| [Roman Political Factions](roman_political_factions.md) | Explanation of Optimates, Populares, and factional politics |
 | [Roman Senate Traditions](roman_senate_traditions.md) | Historical information about Senate customs and practices |
 | [LLM Provider Configuration](llm_providers.md) | Guide to setting up and configuring different LLM providers |
 | [Component Documentation](components/index.md) | Detailed information about specific system components |
