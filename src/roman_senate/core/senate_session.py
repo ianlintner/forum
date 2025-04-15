@@ -12,6 +12,8 @@ including attendance, agenda introduction, debate, voting, and adjournment.
 import random
 import asyncio
 import time
+import os
+from datetime import datetime
 from typing import List, Dict, Optional, Tuple, Any
 import sys
 from rich.panel import Panel
@@ -20,8 +22,9 @@ from rich.text import Text
 from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.prompt import Prompt, Confirm
-
 from . import senators, debate, vote, topic_generator
+from .game_state import game_state
+from ..core.persistence import auto_save
 from .game_state import game_state
 
 # Initialize console
@@ -464,6 +467,14 @@ async def run_session(senators_count: int = 10, debate_rounds: int = 3, topics_c
     # Add results to game state
     for result in results:
         game_state.add_topic_result(result['topic'], result['vote_result'])
+        
+        # Auto-save after each topic is completed
+        if os.environ.get('ROMAN_SENATE_NO_AUTOSAVE') != 'true':
+            try:
+                save_path = auto_save()
+                console.print(f"[dim]Game auto-saved to: {save_path}[/]")
+            except Exception as e:
+                console.print(f"[dim]Auto-save failed: {str(e)}[/]")
     
     # Display summary
     display_session_summary(results)

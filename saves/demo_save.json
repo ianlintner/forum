@@ -1,0 +1,99 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "created": "2025-04-15T09:37:29.055898",
+    "filename": "demo_save.json"
+  },
+  "game_state": {
+    "game_history": [
+      {
+        "topic": "Should Rome increase the military budget?",
+        "votes": {
+          "outcome": "PASSED",
+          "votes": {
+            "for": 3,
+            "against": 2,
+            "abstain": 0
+          }
+        },
+        "year": -50,
+        "year_display": "50 BCE"
+      }
+    ],
+    "current_topic": "Should Rome form an alliance with Egypt?",
+    "year": -50,
+    "voting_results": [],
+    "senators": [
+      {
+        "id": 1,
+        "name": "Quintus Licinius",
+        "faction": "Religious",
+        "influence": 5,
+        "traits": {
+          "eloquence": 0.7860183670577017,
+          "loyalty": 0.5033388962408886,
+          "corruption": 0.27588869070267796,
+          "ambition": 0.8980234133634639,
+          "traditionalism": 0.7248483137935893
+        },
+        "background": "Claims to have received divine omens guiding political decisions. Openly ambitious about holding higher office."
+      },
+      {
+        "id": 2,
+        "name": "Gaius Flavius Rufus",
+        "faction": "Optimates",
+        "influence": 4,
+        "traits": {
+          "eloquence": 0.6892993029412471,
+          "loyalty": 0.6732675284790283,
+          "corruption": 0.31163112224556755,
+          "ambition": 0.5343850816567024,
+          "traditionalism": 0.8219245118104979
+        },
+        "background": "Comes from one of Rome's oldest patrician families. Staunchly defends the mos maiorum (ancestral customs)."
+      },
+      {
+        "id": 3,
+        "name": "Servius Cornelius",
+        "faction": "Merchant",
+        "influence": 3,
+        "traits": {
+          "eloquence": 0.5133661377392578,
+          "loyalty": 0.3942400778437884,
+          "corruption": 0.2581216872426,
+          "ambition": 0.7534128804774989,
+          "traditionalism": 0.4463654660549827
+        },
+        "background": "Represents the interests of Rome's growing commercial class. Has a reputation for unusual honesty in politics."
+      },
+      {
+        "id": 4,
+        "name": "Gaius Antonius",
+        "faction": "Military",
+        "influence": 2,
+        "traits": {
+          "eloquence": 0.6474389899490476,
+          "loyalty": 0.6001902603047337,
+          "corruption": 0.2801706549203984,
+          "ambition": 0.8499622841622023,
+          "traditionalism": 0.3728895256312652
+        },
+        "background": "Distinguished in campaigns against Gallic tribes. Has a reputation for unusual honesty in politics. Openly ambitious about holding higher office."
+      },
+      {
+        "id": 5,
+        "name": "Marcus Sempronius",
+        "faction": "Military",
+        "influence": 8,
+        "traits": {
+          "eloquence": 0.6895646436269557,
+          "loyalty": 0.6162865022733763,
+          "corruption": 0.47965148487968956,
+          "ambition": 0.8782369949803466,
+          "traditionalism": 0.5866529500353637
+        },
+        "background": "Former military tribune with connections to influential generals. Openly ambitious about holding higher office."
+      }
+    ]
+  }
+}

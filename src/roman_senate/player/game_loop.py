@@ -170,10 +170,26 @@ class PlayerGameLoop:
         # Run the session with player interaction
         results = await session.run_full_session(self.topics)
         
+        # Add results to game state and auto-save after session
+        from ..core.persistence import auto_save
+        import os
+        
+        # Add each topic result to game state
+        for result in results:
+            game_state.add_topic_result(result['topic'], result['vote_result'])
+            
+            # Auto-save after each topic is processed
+            if os.environ.get('ROMAN_SENATE_NO_AUTOSAVE') != 'true':
+                try:
+                    save_path = auto_save()
+                    console.print(f"[dim]Game auto-saved to: {save_path}[/]")
+                except Exception as e:
+                    console.print(f"[dim]Auto-save failed: {str(e)}[/]")
+        
         # Save the player state after the session
         self.player_manager.save_player()
         
-        # Display session summary 
+        # Display session summary
         senate_session.display_session_summary(results)
         
         # Display player status

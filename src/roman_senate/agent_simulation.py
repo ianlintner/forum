@@ -122,7 +122,21 @@ async def run_simulation(
             year=year
         )
         
-        # 7. Display completion message and voting summary
+        # 7. Add results to game state and auto-save after each topic
+        for result in results:
+            game_state.add_topic_result(result['topic'], result['vote_result'])
+            
+            # Auto-save after each topic is completed
+            from .core.persistence import auto_save
+            import os
+            if os.environ.get('ROMAN_SENATE_NO_AUTOSAVE') != 'true':
+                try:
+                    save_path = auto_save()
+                    console.print(f"[dim]Game auto-saved to: {save_path}[/]")
+                except Exception as e:
+                    console.print(f"[dim]Auto-save failed: {str(e)}[/]")
+        
+        # 8. Display completion message and voting summary
         console.print("\n[bold green]Simulation completed successfully![/]")
         console.print(f"Simulated {len(results)} topics with {len(session.attending_senators)} senator agents in the year {abs(year)} BCE.")
         

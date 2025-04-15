@@ -1,0 +1,71 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "created": "2025-04-15T09:36:00",
+    "filename": "test_save.json"
+  },
+  "game_state": {
+    "game_history": [
+      {
+        "topic": "Should Rome increase taxes on conquered provinces?",
+        "votes": {
+          "outcome": "PASSED",
+          "votes": {
+            "for": 6,
+            "against": 4,
+            "abstain": 0
+          }
+        },
+        "year": -50,
+        "year_display": "50 BCE"
+      }
+    ],
+    "current_topic": "Should Caesar be granted special powers?",
+    "year": -50,
+    "voting_results": [],
+    "senators": [
+      {
+        "name": "Marcus Tullius Cicero",
+        "faction": "Optimates",
+        "influence": 8,
+        "id": 1,
+        "background": "Famous orator and philosopher",
+        "memory": {
+          "observations": ["First time in the Senate"],
+          "interactions": {},
+          "voting_history": {"Should Rome increase taxes on conquered provinces?": "oppose"},
+          "debate_history": [],
+          "relationship_scores": {}
+        }
+      },
+      {
+        "name": "Gaius Julius Caesar",
+        "faction": "Populares",
+        "influence": 9,
+        "id": 2,
+        "background": "Military commander and rising politician",
+        "memory": {
+          "observations": ["First time in the Senate"],
+          "interactions": {},
+          "voting_history": {"Should Rome increase taxes on conquered provinces?": "support"},
+          "debate_history": [],
+          "relationship_scores": {"Marcus Tullius Cicero": -0.3}
+        }
+      },
+      {
+        "name": "Marcus Porcius Cato",
+        "faction": "Optimates",
+        "influence": 7,
+        "id": 3,
+        "background": "Conservative defender of traditional values",
+        "memory": {
+          "observations": ["First time in the Senate"],
+          "interactions": {},
+          "voting_history": {"Should Rome increase taxes on conquered provinces?": "oppose"},
+          "debate_history": [],
+          "relationship_scores": {"Gaius Julius Caesar": -0.5}
+        }
+      }
+    ]
+  }
+}

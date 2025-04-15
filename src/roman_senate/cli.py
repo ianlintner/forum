@@ -14,10 +14,11 @@ import os
 import sys
 import typer
 import asyncio
-from typing import Optional
+from typing import Optional, List
 from rich.console import Console
-
+from rich.table import Table
 from .utils.config import LLM_PROVIDER, LLM_MODEL
+from .core.persistence import save_game, load_game, get_save_files, auto_save
 
 app = typer.Typer(help="Roman Senate AI Simulation Game")
 console = Console()
@@ -293,8 +294,90 @@ def info():
         "\n• senate play - Start a new simulation game session"
         "\n• senate play-as-senator - Play as a Roman Senator (interactive mode)"
         "\n• senate simulate - Run a simulation with detailed speeches and voting"
+        "\n• senate save - Save the current game state"
+        "\n• senate load <filename> - Load a saved game"
+        "\n• senate list-saves - Show available save files"
         "\n• senate info - Display this information"
     )
+@app.command(name="save")
+def save_command(
+    filename: Optional[str] = typer.Argument(None, help="Optional custom filename for the save (without extension)")
+):
+    """Save the current game state to a file."""
+    try:
+        # Check if there's an active game state to save
+        from .core.game_state import game_state
+        if not game_state.senators:
+            console.print("[bold red]No active game to save.[/] Start a game first with 'senate play' or 'senate play-as-senator'.")
+            return
+            
+        # Save the game
+        saved_path = save_game(filename)
+        console.print(f"[bold green]Game saved successfully to:[/] {saved_path}")
+        
+    except Exception as e:
+        console.print(f"[bold red]Error saving game:[/] {str(e)}")
+        import traceback
+        console.print(traceback.format_exc())
+
+
+@app.command(name="load")
+def load_command(
+    filename: str = typer.Argument(..., help="Name of the save file to load")
+):
+    """Load a game state from a save file."""
+    try:
+        # Load the game
+        if load_game(filename):
+            console.print(f"[bold green]Game loaded successfully from:[/] {filename}")
+            console.print("Use 'senate play' to continue the loaded game session.")
+        else:
+            console.print(f"[bold red]Failed to load game from:[/] {filename}")
+            
+    except Exception as e:
+        console.print(f"[bold red]Error loading game:[/] {str(e)}")
+        import traceback
+        console.print(traceback.format_exc())
+
+
+@app.command(name="list-saves")
+def list_saves_command():
+    """List all available save files."""
+    try:
+        # Get all save files
+        save_files = get_save_files()
+        
+        if not save_files:
+            console.print("[yellow]No save files found.[/]")
+            return
+            
+        # Create table
+        table = Table(title="Available Save Files")
+        table.add_column("Filename", style="cyan")
+        table.add_column("Created", style="green")
+        table.add_column("Year", style="yellow")
+        table.add_column("Senators", style="magenta")
+        table.add_column("Topics", style="blue")
+        
+        # Add each save file to the table
+        for save_file in save_files:
+            table.add_row(
+                save_file["filename"],
+                save_file["created"],
+                str(save_file["year"]),
+                str(save_file["senator_count"]),
+                str(save_file["topics_resolved"])
+            )
+            
+        # Display the table
+        console.print(table)
+        console.print("\nTo load a save file, use: senate load <filename>")
+        
+    except Exception as e:
+        console.print(f"[bold red]Error listing save files:[/] {str(e)}")
+        import traceback
+        console.print(traceback.format_exc())
+
 
 if __name__ == "__main__":
     app()
