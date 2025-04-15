@@ -81,10 +81,9 @@ class OpenAIProvider(LLMProvider):
                     }
                 ]
             }
-    
     async def generate_text(self, prompt: str, **kwargs) -> str:
         """
-        Generates text based on a prompt (wrapper for generate_completion).
+        Generates text based on a prompt asynchronously.
         
         Args:
             prompt: The text prompt to generate from
@@ -93,5 +92,20 @@ class OpenAIProvider(LLMProvider):
         Returns:
             Generated text response
         """
-        logger.debug("Using generate_text() with OpenAI provider")
+        logger.debug("Using async generate_text() with OpenAI provider")
+        try:
+            logger.debug(f"Generating async completion with OpenAI model {self.model_name}")
+            response = openai.chat.completions.create(
+                model=self.model_name,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=kwargs.get('temperature', 0.7),
+                max_tokens=kwargs.get('max_tokens', 500),
+                **{k:v for k,v in kwargs.items() if k not in ['temperature', 'max_tokens']}
+            )
+            generated_text = response.choices[0].message.content
+            logger.debug(f"Generated {len(generated_text)} characters of text")
+            return generated_text
+        except Exception as e:
+            logger.error(f"Error with OpenAI async completion: {e}")
+            return f"[Error generating text: {str(e)}]"
         return self.generate_completion(prompt, **kwargs)

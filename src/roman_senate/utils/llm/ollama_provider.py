@@ -118,10 +118,9 @@ class OllamaProvider(LLMProvider):
                     }
                 ]
             }
-    
     async def generate_text(self, prompt: str, **kwargs) -> str:
         """
-        Generates text based on a prompt (wrapper for generate_completion).
+        Generates text based on a prompt asynchronously.
         
         Args:
             prompt: The text prompt to generate from
@@ -130,5 +129,32 @@ class OllamaProvider(LLMProvider):
         Returns:
             Generated text response
         """
-        logger.debug("Using generate_text() with Ollama provider")
+        logger.debug("Using async generate_text() with Ollama provider")
+        try:
+            logger.debug(f"Generating async completion with Ollama model {self.model_name}")
+            temperature = kwargs.get('temperature', 0.7)
+            max_tokens = kwargs.get('max_tokens', 500)
+            
+            payload = {
+                "model": self.model_name,
+                "prompt": prompt,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                **{k:v for k,v in kwargs.items() if k not in ['temperature', 'max_tokens']}
+            }
+            
+            # Import here to avoid adding asyncio as a global dependency for non-async code
+            import aiohttp
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.post(self.generate_endpoint, json=payload) as response:
+                    response.raise_for_status()
+                    result = await response.json()
+                    generated_text = result.get("response", "")
+                    logger.debug(f"Generated {len(generated_text)} characters of text")
+                    return generated_text
+                    
+        except Exception as e:
+            logger.error(f"Error with Ollama async completion: {e}")
+            return f"[Error generating text: {str(e)}]"
         return self.generate_completion(prompt, **kwargs)
