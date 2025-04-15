@@ -52,11 +52,4 @@ jobs:
       env:
         OPENAI_API_KEY: ${{ secrets.OPENAI_KEY }}
       run: |
-        pytest --junitxml=test-results.xml
-    
-    - name: Upload test results
-      uses: actions/upload-artifact@v2
-      if: always()
-      with:
-        name: test-results-${{ matrix.python-version }}
-        path: test-results.xml
+        pytest
