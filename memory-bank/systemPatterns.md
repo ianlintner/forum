@@ -177,3 +177,97 @@ LLM providers now follow the Interface Segregation Principle with a common base 
 
 #### Factory Method (Enhanced)
 The LLM provider system uses an enhanced factory method pattern in `utils/llm/factory.py` to create the appropriate LLM provider instance based on configuration.
+
+[2025-04-14 21:37:00] - **Testing Architecture**
+
+### Testing Framework
+The project now implements a comprehensive testing framework using pytest:
+
+```
+tests/
+├── __init__.py
+├── conftest.py             # Shared fixtures and test configuration
+├── core/                   # Core component tests
+│   ├── __init__.py
+│   ├── test_senate_session.py
+│   └── test_topic_generator.py
+├── speech/                 # Speech generation tests
+│   ├── __init__.py
+│   └── test_speech_generator.py
+└── utils/                  # Utility tests
+    ├── __init__.py
+    └── llm/                # LLM provider tests
+        ├── __init__.py
+        ├── test_factory.py
+        └── test_providers.py
+```
+
+### Roman-Themed Testing
+The test functions use Latin names to maintain the Roman theme of the project while providing clear English docstrings to explain their purpose. Examples include:
+
+```python
+def test_responsio_completionis_openai():
+    """Test that OpenAI provider correctly generates completion responses."""
+    # Test implementation
+    
+def test_generatio_thematis_cum_contextu():
+    """Test topic generation with historical context."""
+    # Test implementation
+```
+
+### Testing Patterns
+
+#### Fixture Usage
+The testing system uses pytest fixtures to provide common test dependencies such as mock senators, LLM providers, and topic generators:
+
+```python
+@pytest.fixture
+def senatus_fictus():
+    """Provides a list of mock senators for testing."""
+    return [
+        {"name": "Marcus Tullius", "faction": "Optimates", "traits": {}},
+        {"name": "Gaius Gracchus", "faction": "Populares", "traits": {}}
+    ]
+```
+
+#### Mocking
+Tests use the `unittest.mock` library to mock external dependencies, particularly LLM API calls:
+
+```python
+@patch("openai.chat.completions.create")
+def test_responsio_completionis_openai(mock_completions_create):
+    """Test OpenAI completion functionality with mocked API."""
+    mock_completions_create.return_value = mock_response
+    # Test implementation
+```
+
+#### Parameterization
+Tests use pytest's parameterize functionality to test multiple scenarios with a single test function:
+
+```python
+@pytest.mark.parametrize("factio,expectatum", [
+    ("Optimates", "traditional"), 
+    ("Populares", "reform")
+])
+def test_oratio_cum_factione(factio, expectatum):
+    """Test speech generation with different factions."""
+    # Test implementation that varies by faction
+```
+
+#### Async Testing
+The system incorporates pytest-asyncio for testing asynchronous functions in the LLM providers:
+
+```python
+@pytest.mark.asyncio
+async def test_generatio_textus_async():
+    """Test async text generation method."""
+    # Async test implementation
+```
+
+### Documentation Integration
+The project now includes comprehensive documentation tightly integrated with the testing framework:
+
+1. **Documentation Links**: Test files reference corresponding documentation to explain concepts
+2. **Historical Context**: Documentation provides Roman historical background for the tested functionality
+3. **Multilingual Support**: Both Latin (for test names) and English (for descriptions) are used
+4. **Command-Line Examples**: Documentation includes examples of running the test suite

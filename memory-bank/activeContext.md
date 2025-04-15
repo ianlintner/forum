@@ -27,3 +27,10 @@
 - New structure uses src/roman_senate/ as main package
 - Functionality split into core, player, speech, debate, utils subpackages
 - CLI application being actively tested with `roman_senate.cli play --senators 5 --debate-rounds 2 --topics 1`
+
+[2025-04-14 21:35:00] - **Documentation and Testing Enhancement**
+- Added comprehensive documentation including LLM Provider Configuration Guide
+- Created historical context documents (Roman Senate History, Famous Orators, Political Factions)
+- Implemented pytest test suite with Latin function names for Roman theme
+- Fixed async implementation issues in LLM providers
+- Added proper test configuration for all core components

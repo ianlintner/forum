@@ -144,3 +144,32 @@
 - Added command-line entry points in the cli.py module
 - Maintained the original roman_senate_game/ module for backward compatibility
 - Refactored file locations while preserving core functionality
+
+---
+
+[2025-04-14 21:35:00] - **Documentation and Testing Enhancement**
+
+**Decision:** Create comprehensive documentation and implement a testing framework with Latin naming convention.
+
+**Rationale:**
+- Enhances project usability with clear setup instructions for different LLM providers
+- Provides rich historical context to improve the educational value of the game
+- Ensures code quality through systematic testing
+- Maintains Roman theming through Latin test names
+- Verifies compatibility with both OpenAI and Ollama providers
+
+**Implementation:**
+- Created historical documentation:
+  - Roman Senate history with timeline from founding to Imperial period
+  - Famous Roman orators profiles and their rhetorical techniques
+  - Political faction dynamics between Optimates and Populares
+  - Senate traditions and procedures
+- Implemented technical documentation:
+  - Detailed LLM Provider Configuration Guide
+  - Command-line usage examples
+  - Updated README with ASCII art of the Roman Forum
+- Developed pytest test suite with Latin function names:
+  - Test files for all key components (LLM providers, speech, topics, session)
+  - Latin test names (e.g., `test_responsio_completionis_openai`) with English docstrings
+  - Fixed async implementation in LLM providers to ensure test compatibility
+  - Added proper mocking to avoid actual API calls
