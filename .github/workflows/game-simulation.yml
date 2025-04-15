@@ -58,12 +58,4 @@ jobs:
           --topics ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.topics || 1 }} \
           --year ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.year || -100 }} \
           --non-interactive
-    
-    - name: Archive simulation logs
-      if: always()
-      uses: actions/upload-artifact@v2
-      with:
-        name: simulation-logs
-        path: |
-          logs/
-          data/saves/
+          
