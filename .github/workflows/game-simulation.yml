@@ -29,6 +29,15 @@ on:
         required: false
         default: -100
         type: number
+      api-mode:
+        description: 'API mode (auto, mock, real)'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - mock
+          - real
 
 jobs:
   simulate:
@@ -53,6 +62,38 @@ jobs:
       run: |
         # Set non-interactive test mode for LLM providers
         export ROMAN_SENATE_TEST_MODE=true
+        
+        # Determine API mode based on workflow dispatch input or default to auto
+        API_MODE="${{ github.event_name == 'workflow_dispatch' && github.event.inputs.api-mode || 'auto' }}"
+        
+        echo "API Mode: $API_MODE"
+        
+        if [ "$API_MODE" = "mock" ]; then
+          # Force mock provider regardless of API key
+          echo "Using mock provider for simulation (explicit selection)"
+          export ROMAN_SENATE_MOCK_PROVIDER=true
+        
+        elif [ "$API_MODE" = "real" ]; then
+          # Force real API
+          if [ -n "$OPENAI_API_KEY" ]; then
+            echo "Using real OpenAI API for simulation (explicit selection)"
+            export ROMAN_SENATE_MOCK_PROVIDER=false
+          else
+            echo "ERROR: Real API mode selected but no OPENAI_API_KEY is set in secrets"
+            echo "Please add the OPENAI_API_KEY secret to your repository"
+            exit 1
+          fi
+        
+        else
+          # Auto mode - use real API if key exists, otherwise mock
+          if [ -n "$OPENAI_API_KEY" ]; then
+            echo "Using real OpenAI API for simulation (auto mode with key available)"
+            export ROMAN_SENATE_MOCK_PROVIDER=false
+          else
+            echo "No API key found - using mock provider (auto mode)"
+            export ROMAN_SENATE_MOCK_PROVIDER=true
+          fi
+        fi
         # Run a complete game simulation with parameters from workflow dispatch or defaults
         python -m roman_senate.cli simulate \
           --senators ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.senators || 5 }} \
