@@ -102,7 +102,6 @@ def ensure_cache_dir_exists():
         except Exception as e:
             console.print(f"[bold red]Error creating cache directory: {e}[/]")
 
-
 def load_cached_topics() -> Dict:
     """
     Load cached topics from disk.
@@ -117,9 +116,17 @@ def load_cached_topics() -> Dict:
     
     try:
         with open(TOPICS_CACHE_FILE, 'r') as f:
-            return json.load(f)
+            cached_topics = json.load(f)
+            
+        # Clean any JSON artifacts from the cached topics
+        cleaned_cache = {}
+        for year, topics_dict in cached_topics.items():
+            cleaned_cache[year] = clean_topics_dict(topics_dict)
+            
+        return cleaned_cache
     except Exception as e:
         console.print(f"[bold yellow]Warning: Could not load topics cache: {e}[/]")
+        return {}
         return {}
 
 
@@ -357,13 +364,16 @@ async def generate_topics_for_year(year: int, count: int = 10) -> Dict[str, List
             
             if json_start >= 0 and json_end > json_start:
                 json_str = response[json_start:json_end]
-                topics_by_category = json.loads(json_str)
+                raw_topics = json.loads(json_str)
                 
                 # Validate the response format
-                if not isinstance(topics_by_category, dict):
+                if not isinstance(raw_topics, dict):
                     raise ValueError("Response is not a dictionary")
                 
-                # Cache the results
+                # Clean topic strings - handle JSON artifacts
+                topics_by_category = clean_topics_dict(raw_topics)
+                
+                # Cache the cleaned results
                 topics_cache[year_key] = topics_by_category
                 save_cached_topics(topics_cache)
                 
@@ -400,13 +410,17 @@ async def generate_topics_for_year(year: int, count: int = 10) -> Dict[str, List
                             # If there's content after the colon, it might be a topic
                             if len(parts) > 1 and parts[1].strip():
                                 topic = parts[1].strip().lstrip('- "\'').rstrip('"\'')
+                                # Clean any JSON artifacts before adding
+                                topic = clean_topic_string(topic)
                                 if topic:
                                     topics_by_category[current_category].append(topic)
                     
                     # If we're in a category and line starts with a dash or number, it's likely a topic
-                    elif current_category and (line.startswith('-') or line.startswith('*') or 
+                    elif current_category and (line.startswith('-') or line.startswith('*') or
                                                (line and line[0].isdigit() and '. ' in line)):
                         topic = line.lstrip('- *0123456789. "\'').rstrip('"\'')
+                        # Clean any JSON artifacts before adding
+                        topic = clean_topic_string(topic)
                         if topic:
                             topics_by_category[current_category].append(topic)
                 
@@ -453,6 +467,93 @@ async def get_topics_for_year(year: int, count: int = 10) -> Dict[str, List[str]
         return get_fallback_topics()
 
 
+def clean_topics_dict(topics_dict: Dict[str, List[str]]) -> Dict[str, List[str]]:
+    """
+    Clean topics dictionary by removing JSON artifacts from each topic string.
+    
+    Args:
+        topics_dict (Dict[str, List[str]]): Dictionary of topics by category
+        
+    Returns:
+        Dict[str, List[str]]: Cleaned dictionary of topics
+    """
+    cleaned_dict = {}
+    
+    for category, topics in topics_dict.items():
+        cleaned_topics = []
+        for topic in topics:
+            cleaned_topic = clean_topic_string(topic)
+            if cleaned_topic:
+                cleaned_topics.append(cleaned_topic)
+        
+        if cleaned_topics:
+            cleaned_dict[category] = cleaned_topics
+    
+    return cleaned_dict
+
+
+def clean_topic_string(topic: str) -> str:
+    """
+    Clean a topic string by removing JSON artifacts like brackets, quotes, etc.
+    
+    Args:
+        topic (str): The topic string to clean
+        
+    Returns:
+        str: Cleaned topic string
+    """
+    if not topic:
+        return ""
+    
+    # If it looks like JSON (starts with [ or has escaped quotes)
+    if topic.startswith('[') or '\\\"' in topic or '\\"]' in topic:
+        try:
+            # Try to parse it as JSON first
+            if topic.startswith('['):
+                # It's likely a JSON array
+                try:
+                    parsed = json.loads(topic)
+                    if isinstance(parsed, list):
+                        # Join the array elements with a separator
+                        return "; ".join(str(item) for item in parsed)
+                except:
+                    pass
+            
+            # Handle escaped JSON within a string
+            if '\\\"' in topic:
+                # It might be an escaped JSON string within a string
+                # First strip any trailing commas which would break JSON parsing
+                clean_str = topic.rstrip(',')
+                try:
+                    # Try to parse it after removing escaped quotes
+                    parsed = json.loads(clean_str)
+                    if isinstance(parsed, list):
+                        return "; ".join(str(item) for item in parsed)
+                except:
+                    pass
+        except:
+            # If JSON parsing fails, continue with manual cleaning
+            pass
+    
+    # Manual cleaning
+    cleaned = topic
+    
+    # Remove brackets from beginning and end
+    cleaned = cleaned.lstrip('[ \'"').rstrip('] \'",.')
+    
+    # Remove escaped quotes
+    cleaned = cleaned.replace('\\"', '"').replace('\\\'', '\'')
+    
+    # Sometimes we might have comma-separated values from an array
+    if cleaned.endswith('",') or cleaned.endswith('\','):
+        cleaned = cleaned[:-2]
+    
+    # If we still have quotes at start/end
+    cleaned = cleaned.strip('"\'')
+    
+    return cleaned.strip()
+
+
 def flatten_topics_by_category(topics_by_category: Dict[str, List[str]]) -> List[Dict]:
     """
     Convert topics dictionary to a flat list of topic dictionaries with category information.
@@ -464,13 +565,15 @@ def flatten_topics_by_category(topics_by_category: Dict[str, List[str]]) -> List
         List[Dict]: List of topic dictionaries with 'text' and 'category' fields
     """
     flattened_topics = []
-    
     for category, topics in topics_by_category.items():
         for topic in topics:
-            flattened_topics.append({
-                'text': topic,
-                'category': category
-            })
+            # Clean the topic text to ensure no JSON artifacts remain
+            clean_text = clean_topic_string(topic)
+            if clean_text:
+                flattened_topics.append({
+                    'text': clean_text,
+                    'category': category
+                })
     
     # Shuffle the topics to randomize their order
     random.shuffle(flattened_topics)

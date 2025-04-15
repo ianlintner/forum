@@ -353,15 +353,26 @@ class SenateSession:
         summary_table.add_column("Result", style="green")
         
         for result in results:
-            topic = result["topic"]
-            category = result["category"]
+            # Get topic text and category - handle different data structures
+            if isinstance(result["topic"], dict) and "text" in result["topic"] and "category" in result["topic"]:
+                # Topic is a dictionary with text and category
+                topic_text = result["topic"]["text"]
+                category = result["topic"]["category"]
+            elif isinstance(result["topic"], tuple) and len(result["topic"]) == 2:
+                # Topic is a tuple of (text, category)
+                topic_text, category = result["topic"]
+            else:
+                # Fallback - use whatever we have
+                topic_text = str(result["topic"])
+                category = result["vote_result"].get("category", "Unknown")
+                
             outcome = result["vote_result"]["outcome"]
             
             # Determine result style
             result_style = "green" if outcome == "PASSED" else "red"
             
             summary_table.add_row(
-                topic,
+                topic_text,
                 category,
                 f"[bold {result_style}]{outcome}[/]"
             )

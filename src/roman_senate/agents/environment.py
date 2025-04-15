@@ -6,6 +6,7 @@ This module defines the simulation environment for senate agents.
 """
 from typing import Dict, List, Optional, Any
 import asyncio
+import json
 from rich.console import Console
 from ..utils.llm.base import LLMProvider
 from .senator_agent import SenatorAgent
@@ -90,12 +91,15 @@ class SenateEnvironment:
             category = topic['category']
             self.current_topic = topic
         
-        console.print(f"\n[bold cyan]DEBATE TOPIC:[/] {topic_text}")
+        # Clean any remaining JSON artifacts in the topic text
+        clean_topic_text = self._clean_display_text(topic_text)
+        
+        console.print(f"\n[bold cyan]DEBATE TOPIC:[/] {clean_topic_text}")
         console.print(f"[bold cyan]CATEGORY:[/] {category}")
         
         # Setup debate context
         context = {
-            "topic": topic_text,
+            "topic": clean_topic_text,  # Use cleaned text in the context
             "category": category,
             "year": self.year
         }
@@ -421,8 +425,18 @@ class SenateEnvironment:
         Args:
             topic_result: The result dict from a debate topic
         """
-        # Extract votes
-        votes = topic_result['vote_result']['senators']
+        # Skip relationship updates if vote_result is missing required data
+        if 'vote_result' not in topic_result or 'voting_record' not in topic_result['vote_result']:
+            console.print("[dim]Skipping relationship updates due to missing voting data[/dim]")
+            return
+            
+        # Extract voting records from the vote result
+        voting_record = topic_result['vote_result']['voting_record']
+        
+        # Create a dictionary mapping senator names to their votes for easier lookup
+        vote_map = {}
+        for record in voting_record:
+            vote_map[record['senator']] = record['vote']
         
         # For each pair of senators
         for i, agent1 in enumerate(self.agents):
@@ -430,11 +444,13 @@ class SenateEnvironment:
                 # Calculate relationship change based on voting alignment
                 change = 0
                 
-                # Positive change if they voted the same way
-                if votes[agent1.name] == votes[agent2.name]:
-                    change = 0.2
-                else:
-                    change = -0.1
+                # Only process if both senators have recorded votes
+                if agent1.name in vote_map and agent2.name in vote_map:
+                    # Positive change if they voted the same way
+                    if vote_map[agent1.name] == vote_map[agent2.name]:
+                        change = 0.2
+                    else:
+                        change = -0.1
                 
                 # Update each agent's relationship with the other
                 agent1.memory.update_relationship(agent2.name, change)
@@ -528,3 +544,42 @@ class SenateEnvironment:
                 
         # If no markers at all, just return the text as English
         return speech_text
+        
+    def _clean_display_text(self, text: str) -> str:
+        """
+        Clean text for display by removing any JSON artifacts.
+        
+        Args:
+            text: Original text which may contain JSON artifacts
+            
+        Returns:
+            str: Cleaned text for display
+        """
+        if not text:
+            return ""
+            
+        # If string looks like a JSON array (starts with '[' and ends with ']')
+        if text.startswith('[') and text.endswith(']'):
+            try:
+                # Try to parse it as JSON
+                parsed = json.loads(text)
+                if isinstance(parsed, list):
+                    # Return the first item if it's a list
+                    if parsed and parsed[0]:
+                        return str(parsed[0])
+                    return ""
+            except:
+                pass
+                
+        # Remove common JSON artifacts
+        cleaned = text.strip()
+        cleaned = cleaned.lstrip('[ \'"').rstrip('] \'",.')
+        cleaned = cleaned.replace('\\"', '"').replace('\\\'', '\'')
+        
+        # If it still looks like escaped JSON
+        if '\\\"' in cleaned or '\\"]' in cleaned:
+            # Try more aggressive cleaning
+            cleaned = cleaned.replace('\\\"', '').replace('\\"]', '')
+            cleaned = cleaned.replace('[\"', '').replace('\"]', '')
+            
+        return cleaned.strip()
