@@ -179,8 +179,6 @@ def sample_debate_round():
 # --- Async Fixtures ---
 
 @pytest.fixture
-def event_loop():
-    """Create an instance of the default event loop for each test case."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
+def event_loop_policy():
+    """Return the event loop policy to be used by pytest-asyncio."""
+    return asyncio.get_event_loop_policy()
