@@ -77,13 +77,14 @@ def test_tractatio_erroris_openai():
     (Test error handling)
     """
     # Create a provider that will raise an error
-    with patch('openai.chat.completions.create') as mock_create:
-        mock_create.side_effect = Exception("API error")
-        provider = OpenAIProvider(model_name="gpt-4", api_key="invalid-key")
-        
-        # Test completion with error
-        result = provider.generate_completion("Test prompt")
-        assert "[Error generating text:" in result
+    with patch('openai._ModuleClient.__init__', return_value=None):
+        with patch('openai.chat.completions.create') as mock_create:
+            mock_create.side_effect = Exception("API error")
+            provider = OpenAIProvider(model_name="gpt-4", api_key="invalid-key")
+            
+            # Test completion with error
+            result = provider.generate_completion("Test prompt")
+            assert "[Error generating text:" in result
         
         # Test chat completion with error
         chat_result = provider.generate_chat_completion([{"role": "user", "content": "Test"}])
@@ -169,26 +170,37 @@ def test_tractatio_erroris_ollama():
 
 # --- Integration tests for both providers ---
 
-def test_conformatio_interfacii(mock_openai_provider, mock_ollama_provider):
+def test_conformatio_interfacii(mock_ollama_provider):
     """
     Test that both providers conform to the same interface.
     (Test interface conformity)
     """
-    # Same input for both providers
-    prompt = "Generate a speech for the Senate"
-    messages = [{"role": "user", "content": prompt}]
-    
-    # Test the same methods on both providers
-    openai_completion = mock_openai_provider.generate_completion(prompt)
-    ollama_completion = mock_ollama_provider.generate_completion(prompt)
-    
-    openai_chat = mock_openai_provider.generate_chat_completion(messages)
-    ollama_chat = mock_ollama_provider.generate_chat_completion(messages)
-    
-    # Assert that both return string completions
-    assert isinstance(openai_completion, str)
-    assert isinstance(ollama_completion, str)
-    
-    # Assert that both return dictionaries for chat completions
-    assert isinstance(openai_chat, (dict, MagicMock))
-    assert isinstance(ollama_chat, dict)
+    # Using the patched _ModuleClient to avoid API key check
+    with patch('openai._ModuleClient.__init__', return_value=None):
+        # Mock the OpenAI completion response
+        with patch('openai.chat.completions.create') as mock_create:
+            mock_response = MagicMock()
+            mock_response.choices = [MagicMock(message=MagicMock(content="Mocked OpenAI response"))]
+            mock_create.return_value = mock_response
+            
+            # Create an OpenAI provider
+            openai_provider = OpenAIProvider(model_name="gpt-4", api_key="mock-key")
+            
+            # Same input for both providers
+            prompt = "Generate a speech for the Senate"
+            messages = [{"role": "user", "content": prompt}]
+            
+            # Test the same methods on both providers
+            openai_completion = openai_provider.generate_completion(prompt)
+            ollama_completion = mock_ollama_provider.generate_completion(prompt)
+            
+            openai_chat = openai_provider.generate_chat_completion(messages)
+            ollama_chat = mock_ollama_provider.generate_chat_completion(messages)
+            
+            # Assert that both return string completions
+            assert isinstance(openai_completion, str)
+            assert isinstance(ollama_completion, str)
+            
+            # Assert that both return dictionaries for chat completions
+            assert isinstance(openai_chat, dict)
+            assert isinstance(ollama_chat, dict)
