@@ -40,5 +40,13 @@ Beta with complete gameplay loop:
 - Historically accurate Senate session flow
 - Comprehensive speech generation framework
 - Support for both OpenAI and Ollama LLM providers
+- Mock LLM provider for testing and CI environments
+- Flexible API mode selection in both Docker and GitHub Actions environments
 - Robust testing framework with pytest
 - Extensive documentation including historical context
+
+## CI/CD Integration
+- GitHub Actions workflow for automated testing
+- Configurable API modes (mock, real, auto) in GitHub workflow
+- Docker-based simulation environment for local testing
+- Feature flags for controlling LLM provider selection

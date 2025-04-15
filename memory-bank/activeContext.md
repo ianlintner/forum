@@ -42,3 +42,13 @@
 - Implemented new `simulate` CLI command with non-interactive mode
 - Enhanced SenateSession with test mode support using deterministic behavior
 - Added environment variable support (ROMAN_SENATE_TEST_MODE) for CI testing
+
+[2025-04-15 00:10:00] - **Mock Provider and Flexible API Mode System**
+- Created MockProvider for testing without external API dependencies
+- Implemented Docker-based GitHub Actions simulation environment
+- Added flexible API mode selection (mock, real, auto) in both environments
+- Updated GitHub workflow with configurable API modes via workflow dispatch UI
+- Fixed interactive prompt handling in Docker container environment
+- Enhanced factory system to properly handle different provider selection modes
+- Created comprehensive documentation (README-api-modes.md, README-docker.md)
+- Added environment variables (ROMAN_SENATE_MOCK_PROVIDER) for provider control

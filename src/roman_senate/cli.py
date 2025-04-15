@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
@@ -303,6 +304,58 @@ async def simulate_async(senators: int = 10, debate_rounds: int = 3, topics: int
         if non_interactive:
             sys.exit(1)
 
+@app.command(name="agent")
+def agent(
+    senators: int = typer.Option(10, help="Number of senators to simulate"),
+    debate_rounds: int = typer.Option(3, help="Number of debate rounds per topic"),
+    topics: int = typer.Option(3, help="Number of topics to debate"),
+    year: int = typer.Option(-100, help="Year in Roman history (negative for BCE)"),
+    provider: str = typer.Option(None, help="LLM provider to use (defaults to config)")
+):
+    """Run an agent-driven simulation of the Roman Senate."""
+    try:
+        # Convert parameters to integers
+        senators_int = int(senators)
+        debate_rounds_int = int(debate_rounds)
+        topics_int = int(topics)
+        year_int = int(year)
+        
+        # Run the async agent simulation function with asyncio.run
+        asyncio.run(agent_async(senators_int, debate_rounds_int, topics_int, year_int, provider))
+        
+    except Exception as e:
+        console.print(f"\n[bold red]Agent simulation error:[/bold red] {str(e)}")
+        
+        # Add detailed traceback for debugging
+        import traceback
+        console.print("\n[bold yellow]Detailed Error Information:[/bold yellow]")
+        console.print(traceback.format_exc())
+        console.print(f"\n[bold cyan]Error Type:[/bold cyan] {type(e).__name__}")
+        console.print(f"[bold cyan]Error Location:[/bold cyan] Look for 'File' and line number in traceback above")
+
+async def agent_async(senators: int = 10, debate_rounds: int = 3, topics: int = 3, year: int = -100, provider: str = None):
+    """
+    Run an agent-driven simulation of the Roman Senate.
+    
+    Args:
+        senators: Number of senators to simulate
+        debate_rounds: Number of debate rounds per topic
+        topics: Number of topics to debate
+        year: Year in Roman history (negative for BCE)
+        provider: LLM provider to use (defaults to config)
+    """
+    # Import the agent simulation here to avoid circular imports
+    from .agent_simulation import run_agent_simulation
+    
+    # Run the agent simulation
+    await run_agent_simulation(
+        senators_count=senators,
+        debate_rounds=debate_rounds,
+        topics_count=topics,
+        year=year,
+        provider=provider
+    )
+
 @app.command()
 def info():
     """Display information about the game and its systems."""
@@ -320,6 +373,7 @@ def info():
         "\n\n[bold]Commands:[/]"
         "\n• senate play - Start a new simulation game session"
         "\n• senate play-as-senator - Play as a Roman Senator (interactive mode)"
+        "\n• senate agent - Run an agent-driven simulation (agents with memory)"
         "\n• senate simulate - Run a non-interactive simulation (for testing)"
         "\n• senate info - Display this information"
     )

@@ -194,3 +194,41 @@
 - Modified `SenateSession` to handle test mode with deterministic behavior
 - Added environment variable support (`ROMAN_SENATE_TEST_MODE`) for CI testing
 - Implemented proper exit codes for CI environment feedback
+
+---
+
+[2025-04-15 00:10:00] - **Mock Provider and Flexible API Mode Selection System**
+
+**Decision:** Implement a MockProvider class and flexible API mode selection system for testing and CI environments.
+
+**Rationale:**
+- Resolves the GitHub Actions workflow failures due to missing API keys
+- Enables deterministic testing without external API dependencies
+- Provides flexible options for both local Docker testing and GitHub CI
+- Makes the system more robust in non-interactive environments
+- Allows users to choose between real API (for accuracy) and mock (for speed/reliability)
+
+**Implementation:**
+- Created `src/roman_senate/utils/llm/mock_provider.py` with pre-determined responses
+- Updated LLM factory to support explicit provider selection via environment variables
+- Modified GitHub workflow to support selectable API modes via workflow dispatch UI:
+  ```yaml
+  api-mode:
+    description: 'API mode (auto, mock, real)'
+    required: false
+    default: 'auto'
+    type: choice
+    options:
+      - auto
+      - mock
+      - real
+  ```
+- Created Docker-based simulation environment with Python 3.11 slim image
+- Implemented flexible command-line options for Docker simulation:
+  ```
+  --use-mock           Force use of mock provider regardless of API key presence
+  --use-real-api       Force use of real OpenAI API even in test mode
+  ```
+- Fixed interactive prompt handling in Docker container environment
+- Added robust error handling for different vote result formats
+- Created comprehensive documentation in README-api-modes.md and README-docker.md

@@ -3,3 +3,9 @@
 .roo/
 .roomodes
 
+**/__pycache__/
+src/roman_senate/__pycache__/
+src/roman_senate/utils/llm/__pycache__/factory.cpython-312.pyc
+__pycache__/
+__pycache__/fac
+src/roman_senate/core/__pycache__/
