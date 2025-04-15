@@ -1,4 +1,6 @@
-# Roman Senate Game 
+# Roman Senate Game using AI Agents & LLMs
+
+![FORUM](docs/assets/Forum.png)
 
 "AI Agents yelling at each other in historically adjacent Latin"
 
