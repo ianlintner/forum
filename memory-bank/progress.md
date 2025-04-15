@@ -2,6 +2,27 @@
 
 ## Completed Tasks
 
+[2025-04-15 02:16:54] - **Unified Agent-Driven Simulation Experience**
+- Merged traditional presentation with agent-driven logic
+- Created single unified simulation approach
+- Enhanced output with rich formatting and relationship visualization
+- Fixed OpenAI topic generation JSON parsing issues
+- Streamlined the simulation command interface
+
+[2025-04-15 01:16:36] - **Enhanced CLI and Fixed Display Issues**
+- Updated CLI to support agent-driven simulation
+- Made agent-driven simulation the default experience
+- Fixed topic parsing and display issues in agent simulation
+- Added detailed agent reasoning to simulation output
+- Improved error handling for different simulation modes
+
+[2025-04-15 00:21:32] - **Implemented Agent-Driven Architecture**
+- Created SenatorAgent class with memory and decision-making
+- Implemented AgentMemory system for tracking experiences and opinions
+- Built SenateEnvironment for agent interactions and event propagation
+- Developed agent-driven debate with emergent speaking order
+- Added goals and intentions for autonomous senator behavior
+
 [2025-04-14 00:51:00] - **Integrated Player Interaction with Debate System**
 - Modified debate.py to detect when player senator's turn comes up
 - Added functionality to generate speech options for the player
@@ -123,6 +144,9 @@
 
 ## Future Features Roadmap
 
+- Implement formal BDI (Beliefs, Desires, Intentions) model for more sophisticated agent reasoning
+- Add multi-session memory for senators to learn and adapt across multiple debates
+- Enhance coalition formation and political maneuvering strategies
 - Historical events that influence debates
 - More complex faction relationships and alliances
 - Enhanced visual presentation with maps and senator portraits

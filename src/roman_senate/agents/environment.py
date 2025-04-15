@@ -43,30 +43,52 @@ class SenateEnvironment:
         self.agents = [SenatorAgent(senator, self.llm_provider) for senator in senators]
         console.print(f"[green]✓[/] Initialized {len(self.agents)} senator agents")
     
-    def set_topics(self, topics: List[Dict]):
+    def set_topics(self, topics):
         """
         Set the topics for debate.
         
         Args:
-            topics: List of topic objects with 'text' and 'category' keys
+            topics: List of topic objects, which can be either:
+                  - Dictionaries with 'text' and 'category' keys
+                  - Tuples of (text, category)
         """
-        self.topics = topics
+        # Convert any tuples to dictionaries for consistent handling
+        normalized_topics = []
+        for topic in topics:
+            if isinstance(topic, tuple) and len(topic) == 2:
+                # Topic is a tuple of (text, category)
+                text, category = topic
+                normalized_topics.append({'text': text, 'category': category})
+            else:
+                # Topic is already a dictionary
+                normalized_topics.append(topic)
+                
+        self.topics = normalized_topics
         console.print(f"[green]✓[/] Set {len(topics)} topics for debate")
     
-    async def run_debate(self, topic: Dict, rounds: int = 3):
+    async def run_debate(self, topic, rounds: int = 3):
         """
         Run a debate on a given topic.
         
         Args:
-            topic: The topic to debate (dict with 'text' and 'category')
+            topic: The topic to debate (either a dict with 'text' and 'category' keys
+                  or a tuple of (text, category))
             rounds: Number of debate rounds
             
         Returns:
             Dict containing debate results and voting outcome
         """
-        topic_text = topic['text']
-        category = topic['category']
-        self.current_topic = topic
+        # Handle both dictionary and tuple formats for topics
+        if isinstance(topic, tuple) and len(topic) == 2:
+            # Topic is a tuple of (text, category)
+            topic_text, category = topic
+            # Create a consistent topic dictionary for internal use
+            self.current_topic = {'text': topic_text, 'category': category}
+        else:
+            # Topic is a dictionary
+            topic_text = topic['text']
+            category = topic['category']
+            self.current_topic = topic
         
         console.print(f"\n[bold cyan]DEBATE TOPIC:[/] {topic_text}")
         console.print(f"[bold cyan]CATEGORY:[/] {category}")
@@ -94,22 +116,66 @@ class SenateEnvironment:
         # Run debate rounds
         speeches = []
         
+        from ..core.debate import display_speech, score_argument
+        
         for round_num in range(1, rounds + 1):
             console.print(f"\n[bold cyan]DEBATE ROUND {round_num}[/]")
             
             for agent in self.agents:
-                speech, reasoning = await agent.generate_speech(topic_text, context)
-                speeches.append({
+                speech_text, reasoning = await agent.generate_speech(topic_text, context)
+                
+                # Format speech data for traditional display
+                speech_data = {
                     "senator": agent.name,
+                    "senator_name": agent.name,
                     "faction": agent.faction,
                     "stance": stances[agent.name],
-                    "speech": speech,
-                    "reasoning": reasoning
-                })
+                    "speech": speech_text,
+                    "reasoning": reasoning,
+                    # Split the speech into Latin and English if it contains "---LATIN---" markers
+                    "latin_text": self._extract_latin(speech_text),
+                    "english_text": self._extract_english(speech_text),
+                    "full_text": speech_text,  # For backward compatibility
+                    "key_points": reasoning.split(". ")[:2] if reasoning else [],
+                    "year": self.year,
+                    "year_display": f"{abs(self.year)} BCE",
+                    "speech_length": "3-4",  # Default values
+                    "argument_quality": "sound and reasonable",
+                    "rhetorical_flourishes": "2-3",
+                    "quality_factor": 0.7,
+                    "eloquence": 0.7,
+                }
                 
-                console.print(f"[bold]{agent.name} ({agent.faction}) | {stances[agent.name].upper()}:[/]")
-                console.print(f"{speech}")
-                console.print(f"[dim](Rhetorical approach: {reasoning})[/dim]\n")
+                # Add to speeches collection
+                speeches.append(speech_data)
+                
+                # Display the speech using the traditional rich formatting
+                senator_info = {"name": agent.name, "faction": agent.faction}
+                display_speech(senator_info, speech_data, topic_text)
+                
+                # Score and display speech evaluation
+                if speech_data["english_text"]:
+                    score = score_argument(speech_data["english_text"], topic_text)
+                else:
+                    score = score_argument(speech_text, topic_text)
+                
+                # Display score
+                console.print(f"[dim](Rhetorical approach: {reasoning})[/dim]")
+                
+                # Show the score as in traditional simulation
+                from rich.table import Table
+                score_table = Table(title="Speech Assessment")
+                score_table.add_column("Criterion", style="cyan")
+                score_table.add_column("Score", justify="right")
+                
+                for criterion, value in score.items():
+                    if criterion != "total":
+                        score_table.add_row(
+                            criterion.replace("_", " ").title(), f"{value:.2f}"
+                        )
+                
+                score_table.add_row("Overall", f"[bold]{score['total']:.2f}[/]")
+                console.print(score_table)
                 
                 # Simulate a short delay between speeches for readability
                 await asyncio.sleep(0.5)
@@ -136,35 +202,179 @@ class SenateEnvironment:
         Returns:
             Dict containing vote results
         """
-        votes = {"for": 0, "against": 0, "senators": {}, "reasoning": {}}
+        from ..core.vote import conduct_vote, display_vote_result
+        from rich.progress import Progress, SpinnerColumn, TextColumn
+        import random
         
-        for agent in self.agents:
-            vote, reasoning = await agent.vote(topic_text, context)
-            votes["senators"][agent.name] = vote
-            votes["reasoning"][agent.name] = reasoning
-            
-            if vote == "for":
-                votes["for"] += 1
-            else:
-                votes["against"] += 1
-                
-            console.print(f"[dim]• {agent.name} votes {vote}:[/]")
-            console.print(f"  [dim italic]{reasoning}[/dim italic]")
+        # Format votes in the same structure as the traditional simulation
+        votes = {"for": 0, "against": 0, "abstain": 0}
+        voting_record = []
         
-        # Determine the outcome
-        total_votes = votes["for"] + votes["against"]
-        votes["total"] = total_votes
-        votes["passed"] = votes["for"] > votes["against"]
+        # Create a map of senator stances for context
+        stances = {}
+        for speech in context.get("previous_speeches", []):
+            stances[speech.get("senator_name")] = speech.get("stance")
         
-        # Display the result
-        if votes["passed"]:
-            result = f"[bold green]PASSED[/] ({votes['for']} to {votes['against']})"
+        # Format the voting introduction panel
+        from rich.panel import Panel
+        category = self.current_topic.get('category', '')
+        
+        # Create a more informative vote introduction
+        if category:
+            introduction = f"The Senate will now vote on a matter of [bold yellow]{category}[/]:\n[italic]{topic_text}[/]"
         else:
-            result = f"[bold red]REJECTED[/] ({votes['for']} to {votes['against']})"
-            
-        console.print(f"\n[bold]VOTE RESULT:[/] {result}")
+            introduction = f"The Senate will now vote on:\n[italic]{topic_text}[/]"
         
-        return votes
+        # Display the vote panel with category context
+        console.print(Panel(introduction, title="[bold magenta]SENATE VOTE BEGINS[/]", border_style="magenta", width=100))
+        
+        # Show progress of senators casting votes
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold]Senators are casting their votes...[/]"),
+            console=console,
+        ) as progress:
+            task = progress.add_task("Voting...", total=len(self.agents))
+            
+            # Process votes for each senator
+            for agent in self.agents:
+                vote, reasoning = await agent.vote(topic_text, context)
+                
+                # Map the agent's vote to "for", "against", or "abstain"
+                # The agent system only returns "for" or "against", but we'll add
+                # a small chance of abstention for realism
+                if random.random() < 0.05:  # 5% chance to abstain
+                    final_vote = "abstain"
+                else:
+                    final_vote = vote
+                
+                # Update vote counts
+                votes[final_vote] += 1
+                
+                # Add to voting record
+                stance = stances.get(agent.name, "unknown")
+                voting_record.append({
+                    "senator": agent.name,
+                    "faction": agent.faction,
+                    "vote": final_vote,
+                    "influence": agent.senator.get("influence", 5),
+                    "debate_stance": stance
+                })
+                
+                # Update progress
+                progress.update(task, advance=1)
+                await asyncio.sleep(0.1)  # Small delay for visual effect
+        
+        # Calculate outcome - passed if more "for" than "against"
+        passed = votes["for"] > votes["against"]
+        outcome = "PASSED" if passed else "REJECTED"
+        
+        # Create complete vote result object
+        vote_result = {
+            "topic": topic_text,
+            "category": self.current_topic.get('category', ''),
+            "votes": votes,
+            "outcome": outcome,
+            "passed": passed,
+            "voting_record": voting_record,
+            "total": sum(votes.values())
+        }
+        
+        # Display detailed voting breakdown as in traditional simulation
+        self._display_vote_breakdown(vote_result, stances)
+        
+        # Display the final result
+        result_style = "green" if passed else "red"
+        console.print(f"\nThe motion has been [bold {result_style}]{outcome}[/] ({votes['for']} to {votes['against']}).\n")
+        
+        return vote_result
+        
+    def _display_vote_breakdown(self, vote_result, debate_stances):
+        """
+        Display a detailed breakdown of votes similar to the traditional simulation.
+        
+        Args:
+            vote_result: Vote result dictionary
+            debate_stances: Dictionary mapping senator names to their debate stances
+        """
+        from rich.table import Table
+        
+        # Display voting results summary
+        console.print("\n[bold yellow]Voting Results Summary:[/]")
+        
+        results_table = Table()
+        results_table.add_column("Option", style="cyan")
+        results_table.add_column("Votes", justify="right")
+        results_table.add_column("Percentage", justify="right")
+        
+        total_votes = vote_result.get("total", 0)
+        votes = vote_result["votes"]
+        
+        for option, count in votes.items():
+            percentage = (count / total_votes) * 100 if total_votes > 0 else 0
+            results_table.add_row(option.title(), str(count), f"{percentage:.1f}%")
+        
+        console.print(results_table)
+        
+        # Display detailed voting breakdown
+        console.print("\n[bold yellow]Detailed Voting Breakdown:[/]")
+        
+        detailed_table = Table(title=f"Vote on: {vote_result['topic']}")
+        detailed_table.add_column("Senator", style="cyan")
+        detailed_table.add_column("Faction", style="magenta")
+        detailed_table.add_column("Debate Stance", justify="center")
+        detailed_table.add_column("Final Vote", justify="center")
+        detailed_table.add_column("Swayed", justify="center")
+        
+        # Map stances to votes for comparison
+        stance_to_vote = {
+            "support": "for",
+            "oppose": "against",
+            "neutral": None  # Neutral could be any vote
+        }
+        
+        # Sort voting record by faction then senator name
+        sorted_record = sorted(vote_result["voting_record"], key=lambda x: (x["faction"], x["senator"]))
+        
+        for record in sorted_record:
+            senator_name = record["senator"]
+            stance = debate_stances.get(senator_name, "unknown")
+            vote = record["vote"]
+            
+            # Determine if senator was swayed
+            expected_vote = stance_to_vote.get(stance, None)
+            swayed = ""
+            
+            if expected_vote and vote != expected_vote:
+                swayed = "[bold yellow]*[/]"
+            elif stance == "neutral" and vote != "abstain":
+                swayed = "[bold blue]†[/]"
+                
+            # Format the stance and vote with colors
+            stance_format = {
+                "support": "[green]Support[/]",
+                "oppose": "[red]Oppose[/]",
+                "neutral": "[yellow]Neutral[/]",
+                "unknown": "[dim]Unknown[/]"
+            }
+            
+            vote_format = {
+                "for": "[green]For[/]",
+                "against": "[red]Against[/]",
+                "abstain": "[yellow]Abstain[/]"
+            }
+            
+            detailed_table.add_row(
+                record["senator"],
+                record["faction"],
+                stance_format.get(stance, f"[dim]{stance}[/]"),
+                vote_format.get(vote, f"[dim]{vote}[/]"),
+                swayed
+            )
+        
+        console.print(detailed_table)
+        console.print("[bold yellow]*[/] Senator voted differently than their debate stance")
+        console.print("[bold blue]†[/] Senator with neutral stance made a definitive vote")
     
     async def run_simulation(self, senators: List[Dict[str, Any]], topics: List[Dict],
                            debate_rounds: int = 3, year: int = -100):
@@ -266,3 +476,55 @@ class SenateEnvironment:
             # If no significant relationships yet
             if not allies and not rivals:
                 console.print("  [dim]No strong relationships formed yet[/]")
+                
+    def _extract_latin(self, speech_text: str) -> str:
+        """
+        Extract Latin text from a speech that may contain Latin/English markers.
+        
+        Args:
+            speech_text: The full speech text
+            
+        Returns:
+            The Latin portion or a placeholder if not found
+        """
+        if not speech_text:
+            return "Lorem ipsum dolor sit amet."
+            
+        # If the speech contains the Latin marker
+        if "---LATIN---" in speech_text:
+            sections = speech_text.split("---LATIN---")
+            if len(sections) > 1:
+                latin_english = sections[1].split("---ENGLISH---")
+                if len(latin_english) > 0:
+                    return latin_english[0].strip()
+                    
+        # If the speech doesn't have markers, just return a placeholder
+        return "Lorem ipsum dolor sit amet."
+        
+    def _extract_english(self, speech_text: str) -> str:
+        """
+        Extract English text from a speech that may contain Latin/English markers.
+        
+        Args:
+            speech_text: The full speech text
+            
+        Returns:
+            The English portion or the full text if no markers found
+        """
+        if not speech_text:
+            return ""
+            
+        # If the speech contains the English marker
+        if "---ENGLISH---" in speech_text:
+            sections = speech_text.split("---ENGLISH---")
+            if len(sections) > 1:
+                return sections[1].strip()
+                
+        # If no English marker, check if there's only a Latin marker
+        elif "---LATIN---" in speech_text:
+            sections = speech_text.split("---LATIN---")
+            if len(sections) > 1 and len(sections) < 3:  # Should have at most 2 sections
+                return speech_text  # Return the whole thing as English if unclear
+                
+        # If no markers at all, just return the text as English
+        return speech_text

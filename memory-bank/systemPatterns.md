@@ -1,6 +1,28 @@
 # System Patterns
 
 ## Architecture Patterns
+
+### Agent-Driven Architecture (Added 2025-04-15)
+The system now implements an agent-driven architecture for autonomous senator behavior:
+
+#### Key Components
+- **SenatorAgent**: Autonomous agents with memory, goals, and decision-making capabilities
+- **AgentMemory**: Memory system for storing experiences, forming opinions, and tracking relationships
+- **SenateEnvironment**: Environment for agent interactions and event propagation
+- **AgentDrivenSenateSession**: Orchestration of agent-based senate sessions
+
+#### Agent Architecture Patterns
+- **BDI-inspired Model**: Agents have beliefs (memory of past events), desires (goals), and intentions (planned actions)
+- **Memory System**: Short-term and long-term memory with relevance-based retrieval
+- **Opinion Formation**: Dynamic stance-taking based on faction alignment and past experiences
+- **Relationship Modeling**: Evolving relationships between senators based on interactions
+- **Decision-Making**: Autonomous action selection based on goals and context
+
+#### Unified Presentation Approach
+- Agent-driven logic combined with rich traditional presentation
+- Detailed speech display with Latin and English translations
+- Comprehensive voting results with senator-by-senator breakdown
+- Relationship visualization for political dynamics
 [2025-04-13 18:24:53] - Current system uses a modular architecture with separate modules for different components of the Roman Senate simulation.
 
 ### Module Structure
@@ -24,6 +46,15 @@ The application uses Typer to implement a command-based interface, following the
 
 #### Factory Method
 Senator creation follows a factory method approach, generating senators with random traits and faction alignments.
+
+#### Agent Pattern
+The application implements an agent-based model where senators are autonomous agents that observe their environment, make decisions, and take actions.
+
+#### Memory Pattern
+Agents utilize a memory system that stores experiences, opinions, and relationships, allowing for decision-making based on past interactions.
+
+#### Observable Environment Pattern
+The senate environment acts as an observable object, notifying agents of events and allowing them to react accordingly.
 
 #### Strategy Pattern
 Different debate and voting strategies can be employed based on senator traits and faction alignments.
@@ -168,6 +199,19 @@ src/
 The original `roman_senate_game/` module is maintained for backward compatibility while new development proceeds in the proper package structure.
 
 ### Enhanced Design Patterns
+
+#### Agent-Environment Interaction
+The system implements a structured agent-environment interaction pattern:
+- Environment maintains the state and coordinates interactions
+- Agents observe the environment and decide actions
+- Environment executes agent actions and updates state
+- Agents receive feedback through further observations
+
+#### Belief-Desire-Intention Inspired
+While not a full BDI implementation, the system incorporates elements of the BDI model:
+- Beliefs: Information stored in agent memory
+- Desires: Goals that guide decision-making
+- Intentions: Planned actions based on current context
 
 #### Dependency Injection
 The new package structure implements dependency injection throughout the system, allowing for better testability and component replacement.

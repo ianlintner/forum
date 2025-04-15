@@ -1,6 +1,13 @@
+
 # Active Development Context
 
 ## Current Focus
+
+[2025-04-15 02:16:54] - **Agent-Driven Architecture Development**
+- Implemented autonomous senator agents with memory, goals, and decision-making
+- Created an environment for agent interactions and event propagation
+- Unified traditional presentation layer with agent-driven logic
+- Fixed topic parsing and generation issues for better display
 
 [2025-04-14 00:51:30] - **Player Interaction in Debate System**
 - Integrated player interaction capabilities into the debate system
@@ -10,6 +17,10 @@
 
 ## Recent Changes
 
+[2025-04-15 02:14:42] - Unified simulation approach combining traditional presentation with agent-driven logic
+[2025-04-15 02:04:22] - Fixed OpenAI topic generation JSON parsing issues
+[2025-04-15 01:27:37] - Fixed topic parsing issues in agent simulation
+[2025-04-15 00:21:32] - Implemented agent-driven architecture for autonmous senator behaviors
 [2025-04-14 00:51:30] - Added player senator detection and interactive features to debate.py
 [2025-04-14 00:32:45] - Implemented complete player management system
 [2025-04-13 23:22:20] - Created core debate system with AI speech generation 
@@ -17,10 +28,11 @@
 
 ## Open Questions/Issues
 
-- How to balance player interjection frequency?
+- How to implement a formal BDI (Beliefs, Desires, Intentions) model for senator reasoning?
+- What strategies for multi-session memory would allow senators to learn over time?
+- How to enhance coalition formation and political maneuvering dynamics?
 - Should speeches by AI and player be evaluated differently?
-- Need to ensure player choices have meaningful impact on debate outcomes
-- Consider how to handle player reputation changes based on speech style
+- How to maintain performance with increased agent complexity?
 
 [2025-04-14 20:18:00] - **Package Structure Reorganization**
 - Code being reorganized from flat structure to proper Python package

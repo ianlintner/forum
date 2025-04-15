@@ -20,8 +20,9 @@ The Roman Senate Game is an immersive political simulation set in the late Roman
 - **Historical Authenticity**: Set in the late Republic era with historically accurate debate topics and context
 - **Sophisticated Speech Generation**: Experience speeches with classical structure, rhetorical devices, and Latin flourishes
 - **Faction Politics**: Navigate the complex dynamics between Optimates and Populares factions
-- **Two Game Modes**:
-  - **Simulation Mode**: Watch AI senators debate and vote
+- **Three Game Modes**:
+  - **Simulation Mode**: Watch autonomous senator agents with memory, dynamic relationships, and advanced decision-making
+  - **Traditional Simulation Mode**: Watch basic AI senators debate and vote (legacy mode)
   - **Interactive Mode**: Create your own senator and participate in debates and votes
 - **Dynamic Voting System**: Influence votes through persuasive speeches and political relationships
 
@@ -68,6 +69,26 @@ python -m roman_senate.cli play-as-senator
 
 ### Command-line Options
 
+#### Simulation Mode (Agent-Driven)
+
+```bash
+python -m roman_senate.cli simulate
+```
+
+Run a simulation with autonomous senator agents that have memory and develop relationships (default):
+
+- `--senators`: Number of senators to simulate (default: 10)
+- `--debate-rounds`: Number of debate rounds per topic (default: 3)
+- `--topics`: Number of topics to debate (default: 3)
+- `--year`: Year in Roman history (negative for BCE, default: -100)
+- `--provider`: LLM provider to use (defaults to config)
+- `--traditional`: Use traditional simulation instead of agent-driven
+
+Example:
+```bash
+python -m roman_senate.cli simulate --senators 15 --topics 5 --year -50
+```
+
 #### Simulation Mode Options
 
 - `--senators`: Number of senators to simulate (default: 10)
@@ -98,22 +119,37 @@ View information about the game:
 ```bash
 python -m roman_senate.cli info
 ```
-
 ## Game Modes Explained
 
-### Simulation Mode (`roman_senate.cli play`)
+### Simulation Mode (`roman_senate.cli simulate`)
 
-In Simulation Mode, you watch as AI-controlled senators debate and vote on important matters facing Rome. The game will:
+In Simulation Mode, senators function as autonomous agents with memory, goals, and decision-making capabilities:
+
+1. Senators remember past debates, votes, and interactions
+2. They form dynamic relationships that evolve based on voting alignment
+3. They provide detailed reasoning for their stances, rhetorical approaches, and votes
+4. The simulation displays the evolving relationship network between senators
+
+This mode is ideal for:
+- Observing emergent political behavior and coalition formation
+- Studying how relationships influence political decision-making
+- Experiencing a dynamic and unpredictable simulation
+
+### Traditional Simulation Mode (`roman_senate.cli simulate --traditional`)
+
+In Traditional Simulation Mode, you watch as AI-controlled senators debate and vote on important matters facing Rome. The game will:
 
 1. Initialize a set of senators with unique personalities and political alignments
 2. Generate historically appropriate debate topics
 3. Simulate debates with multiple rounds of speeches
 4. Conduct voting and display results
 
-This mode is perfect for:
+This mode is useful for:
 - Learning how the Roman Senate functioned
 - Enjoying the political drama without active participation
 - Studying the sophisticated speech generation system
+- Faster simulations when agent memory is not needed
+- Experiencing a more dynamic and unpredictable simulation
 
 ### Interactive Mode (`roman_senate.cli play-as-senator`)
 
@@ -181,12 +217,14 @@ The Senate must decide whether to allocate additional funds for a military campa
 ## Further Documentation
 
 For more detailed information about the game components and architecture, see the documentation in the `docs` folder:
-
 - [User Guide](docs/user_guide.md)
 - [Speech Generation Framework](docs/speech_generation.md)
 - [Interactive Mode Guide](docs/interactive_mode.md)
 - [System Architecture](docs/architecture.md)
+- [Agent-Driven Simulation Guide](docs/agent_simulation.md)
+- [Agent Architecture Documentation](docs/agent_architecture.md)
 - [Roman Senate Traditions](docs/roman_senate_traditions.md)
+- [LLM Provider Configuration](docs/llm_providers.md)
 - [LLM Provider Configuration](docs/llm_providers.md)
 
 ## License

@@ -437,9 +437,10 @@ async def run_session(senators_count: int = 10, debate_rounds: int = 3, topics_c
     # Generate topics for the session
     topics_by_category = await topic_generator.get_topics_for_year(year, topics_count + 2)  # Get a few extra for choice
     flattened_topics = topic_generator.flatten_topics_by_category(topics_by_category)
-    
+    console.print(f"\n[bold cyan]Generated {len(flattened_topics)} topics for the session.[/]")
     # Select topics
     selected_topics = []
+    console.print(selected_topics)
     for i in range(min(topics_count, len(flattened_topics))):
         if i < len(flattened_topics):
             topic_obj = flattened_topics[i]

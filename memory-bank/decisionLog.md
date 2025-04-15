@@ -231,4 +231,24 @@
   ```
 - Fixed interactive prompt handling in Docker container environment
 - Added robust error handling for different vote result formats
+## [2025-04-15 02:16:39] - Agent-Driven Architecture Implementation
+
+**Decision:** Implement an agent-driven architecture for the Roman Senate simulation with autonomous senator agents.
+
+**Rationale:**
+- Creates more emergent and realistic political dynamics
+- Enables senators to have memory, goals, and autonomous decision-making
+- Provides a more engaging and unpredictable simulation
+- Maintains rich presentation layer from the traditional approach
+
+**Implementation:**
+- Created `SenatorAgent` class with memory, goals, and decision-making capabilities
+- Implemented `AgentMemory` system for storing experiences and forming opinions
+- Built `SenateEnvironment` for agent interactions and event propagation
+- Developed agent-driven debate with emergent speaking order
+- Unified the traditional presentation layer with agent-driven logic
+- Fixed topic parsing and display issues
+- Simplified CLI by making agent-driven simulation the default approach
+
+This architecture enables more dynamic, realistic senate proceedings while maintaining the rich presentation and historical accuracy of the traditional approach.
 - Created comprehensive documentation in README-api-modes.md and README-docker.md

@@ -190,15 +190,21 @@ def play_as_senator(
         console.print("\nGame session terminated. Type 'senate play-as-senator' to try again.\n")
 
 
-@app.command(name="simulate")
+@app.command(name="simulate", help="Run a simulation of the Roman Senate")
 def simulate(
     senators: int = typer.Option(10, help="Number of senators to simulate"),
     debate_rounds: int = typer.Option(3, help="Number of debate rounds per topic"),
     topics: int = typer.Option(3, help="Number of topics to debate"),
     year: int = typer.Option(-100, help="Year in Roman history (negative for BCE)"),
-    non_interactive: bool = typer.Option(False, help="Run in non-interactive mode (for CI/CD testing)")
+    non_interactive: bool = typer.Option(False, help="Run in non-interactive mode (for CI/CD testing)"),
+    provider: str = typer.Option(None, help="LLM provider to use (defaults to config)")
 ):
-    """Run a non-interactive simulation of the Roman Senate for testing purposes."""
+    """
+    Run a simulation of the Roman Senate with detailed speeches and voting displays.
+    
+    Uses agent-driven logic for intelligent decision-making combined with
+    rich traditional formatting to display speeches, debates, and voting results.
+    """
     try:
         # Set test mode environment variable if non_interactive
         if non_interactive:
@@ -211,8 +217,9 @@ def simulate(
         topics_int = int(topics)
         year_int = int(year)
         
-        # Run the async simulation function with asyncio.run
-        asyncio.run(simulate_async(senators_int, debate_rounds_int, topics_int, year_int, non_interactive))
+        # Run the unified simulation
+        console.print("[dim]Starting Roman Senate simulation...[/]")
+        asyncio.run(run_simulation_async(senators_int, debate_rounds_int, topics_int, year_int, provider))
         
     except Exception as e:
         console.print(f"\n[bold red]Simulation error:[/bold red] {str(e)}")
@@ -225,117 +232,9 @@ def simulate(
         # Exit with error code for CI/CD
         if non_interactive:
             sys.exit(1)
-
-async def simulate_async(senators: int = 10, debate_rounds: int = 3, topics: int = 3, year: int = -100, non_interactive: bool = False):
+async def run_simulation_async(senators: int = 10, debate_rounds: int = 3, topics: int = 3, year: int = -100, provider: str = None):
     """
-    Run a non-interactive simulation for testing purposes.
-    
-    Args:
-        senators: Number of senators to simulate
-        debate_rounds: Number of debate rounds per topic
-        topics: Number of topics to debate
-        year: Year in Roman history (negative for BCE)
-        non_interactive: Whether to run in non-interactive mode
-    """
-    # Import needed modules
-    from .core.game_state import game_state
-    from .core import senators as senators_module
-    from .core import topic_generator, senate_session, vote
-    
-    # Setup test mode configurations
-    console.print(f"\n[bold cyan]ROMAN SENATE SIMULATION TEST[/] (Year: {abs(year)} BCE)")
-    
-    # Simplified game loop for automated testing
-    try:
-        # 1. Reset game state
-        game_state.reset()
-        game_state.year = year
-        game_state.test_mode = non_interactive
-        
-        # 2. Initialize senators with deterministic seed if in test mode
-        console.print("Initializing Senate with deterministic seed...")
-        if non_interactive:
-            import random
-            random.seed(42)  # Use fixed seed for reproducible tests
-        
-        senate_members = senators_module.initialize_senate(senators)
-        game_state.senators = senate_members
-        
-        # 3. Run the full senate session
-        console.print("Running Senate session...")
-        results = await senate_session.run_session(
-            senators_count=senators,
-            debate_rounds=debate_rounds,
-            topics_count=topics,
-            year=year,
-            test_mode=non_interactive
-        )
-        
-        # 4. Display simplified results
-        console.print("\n[bold green]Simulation completed successfully[/]")
-        console.print(f"Simulated {len(results)} topics with {senators} senators")
-        
-        # Output vote summary in non-interactive mode for test verification
-        for i, result in enumerate(results):
-            console.print(f"\n[bold]Topic {i+1} vote result:[/]")
-            vote_result = result['vote_result']
-            # Handle different vote result formats
-            if 'for' in vote_result and 'against' in vote_result:
-                console.print(f"For: {vote_result['for']} | Against: {vote_result['against']}")
-            elif 'outcome' in vote_result:
-                console.print(f"Outcome: {vote_result['outcome']}")
-            else:
-                console.print(f"Vote details: {vote_result}")
-                
-            # Check result/passed status
-            if 'passed' in vote_result:
-                console.print(f"Result: {'PASSED' if vote_result['passed'] else 'REJECTED'}")
-            elif 'outcome' in vote_result:
-                console.print(f"Result: {vote_result['outcome']}")
-        
-        # Exit with success code for CI/CD
-        if non_interactive:
-            console.print("[bold green]CI/CD test passed successfully[/]")
-            
-    except Exception as e:
-        console.print(f"Simulation error: {str(e)}")
-        import traceback
-        console.print(traceback.format_exc())
-        if non_interactive:
-            sys.exit(1)
-
-@app.command(name="agent")
-def agent(
-    senators: int = typer.Option(10, help="Number of senators to simulate"),
-    debate_rounds: int = typer.Option(3, help="Number of debate rounds per topic"),
-    topics: int = typer.Option(3, help="Number of topics to debate"),
-    year: int = typer.Option(-100, help="Year in Roman history (negative for BCE)"),
-    provider: str = typer.Option(None, help="LLM provider to use (defaults to config)")
-):
-    """Run an agent-driven simulation of the Roman Senate."""
-    try:
-        # Convert parameters to integers
-        senators_int = int(senators)
-        debate_rounds_int = int(debate_rounds)
-        topics_int = int(topics)
-        year_int = int(year)
-        
-        # Run the async agent simulation function with asyncio.run
-        asyncio.run(agent_async(senators_int, debate_rounds_int, topics_int, year_int, provider))
-        
-    except Exception as e:
-        console.print(f"\n[bold red]Agent simulation error:[/bold red] {str(e)}")
-        
-        # Add detailed traceback for debugging
-        import traceback
-        console.print("\n[bold yellow]Detailed Error Information:[/bold yellow]")
-        console.print(traceback.format_exc())
-        console.print(f"\n[bold cyan]Error Type:[/bold cyan] {type(e).__name__}")
-        console.print(f"[bold cyan]Error Location:[/bold cyan] Look for 'File' and line number in traceback above")
-
-async def agent_async(senators: int = 10, debate_rounds: int = 3, topics: int = 3, year: int = -100, provider: str = None):
-    """
-    Run an agent-driven simulation of the Roman Senate.
+    Run a unified simulation of the Roman Senate using agent-driven logic with traditional display.
     
     Args:
         senators: Number of senators to simulate
@@ -344,17 +243,35 @@ async def agent_async(senators: int = 10, debate_rounds: int = 3, topics: int = 
         year: Year in Roman history (negative for BCE)
         provider: LLM provider to use (defaults to config)
     """
-    # Import the agent simulation here to avoid circular imports
-    from .agent_simulation import run_agent_simulation
+    # Import the unified simulation here to avoid circular imports
+    from .agent_simulation import run_simulation
     
-    # Run the agent simulation
-    await run_agent_simulation(
+    # Use a deterministic seed if in test/non-interactive mode for reproducibility
+    if os.environ.get('ROMAN_SENATE_TEST_MODE') == 'true':
+        import random
+        random.seed(42)
+        console.print("[dim]Using deterministic seed for testing...[/]")
+   
+    # Run the unified simulation with rich display
+    results = await run_simulation(
         senators_count=senators,
         debate_rounds=debate_rounds,
         topics_count=topics,
         year=year,
         provider=provider
     )
+    
+    # For CI/CD testing, output simplified results if in non-interactive mode
+    if os.environ.get('ROMAN_SENATE_TEST_MODE') == 'true':
+        # Output vote summary for test verification
+        for i, result in enumerate(results):
+            console.print(f"\n[bold]Topic {i+1} vote result:[/]")
+            vote_result = result['vote_result']
+            console.print(f"Outcome: {vote_result['outcome']}")
+            
+        console.print("[bold green]CI/CD test passed successfully[/]")
+        
+    return results
 
 @app.command()
 def info():
@@ -373,8 +290,7 @@ def info():
         "\n\n[bold]Commands:[/]"
         "\n• senate play - Start a new simulation game session"
         "\n• senate play-as-senator - Play as a Roman Senator (interactive mode)"
-        "\n• senate agent - Run an agent-driven simulation (agents with memory)"
-        "\n• senate simulate - Run a non-interactive simulation (for testing)"
+        "\n• senate simulate - Run a simulation with detailed speeches and voting"
         "\n• senate info - Display this information"
     )
 
