@@ -9,13 +9,28 @@ Tests for OpenAI and Ollama LLM providers using Latin function names.
 import pytest
 from unittest.mock import patch, MagicMock
 import json
+import os
+import pytest
 
 from roman_senate.utils.llm.openai_provider import OpenAIProvider
 from roman_senate.utils.llm.ollama_provider import OllamaProvider
 
 
+# --- Helpers and Fixtures ---
+# Check if we're in a CI environment or don't have OpenAI keys
+def skip_if_no_openai_key():
+    """Check if we should skip OpenAI tests (CI environment or no API key)"""
+    return 'OPENAI_API_KEY' not in os.environ or os.environ.get('CI') == 'true'
+
+# Skip marker for OpenAI tests
+needs_openai = pytest.mark.skipif(
+    skip_if_no_openai_key(),
+    reason="OpenAI API key not available or running in CI environment"
+)
+
 # --- OpenAI Provider Tests ---
 
+@needs_openai
 def test_responsio_completionis_openai(mock_openai_provider):
     """
     Test that the OpenAI provider correctly generates completions.
@@ -33,6 +48,7 @@ def test_responsio_completionis_openai(mock_openai_provider):
     assert isinstance(result, str)
 
 
+@needs_openai
 def test_responsio_colloquii_openai(mock_openai_provider, mock_openai_response):
     """
     Test that the OpenAI provider correctly handles chat completions.
@@ -55,6 +71,7 @@ def test_responsio_colloquii_openai(mock_openai_provider, mock_openai_response):
     assert result == mock_openai_response
 
 @pytest.mark.asyncio
+@needs_openai
 async def test_generatio_textus_async_openai(mock_openai_provider):
     """
     Test async text generation with OpenAI provider.
@@ -71,6 +88,7 @@ async def test_generatio_textus_async_openai(mock_openai_provider):
     assert result == "Mocked OpenAI response content"
 
 
+@needs_openai
 def test_tractatio_erroris_openai():
     """
     Test error handling in the OpenAI provider.
@@ -170,6 +188,7 @@ def test_tractatio_erroris_ollama():
 
 # --- Integration tests for both providers ---
 
+@needs_openai
 def test_conformatio_interfacii(mock_ollama_provider):
     """
     Test that both providers conform to the same interface.
