@@ -133,20 +133,20 @@ The Roman Senate Game is built with a modular architecture that separates core g
 ### Key Components
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Core Game Components                     │
+┌────────────────────────────────────────────────────────────┐
+│                     Core Game Components                   │
 ├─────────────┬─────────────┬────────────────┬───────────────┤
-│ Game State  │  Senators   │ Topic Generator │ Senate Session │
+│ Game State  │  Senators   │ Topic Generator│ Senate Session│
 └─────────────┴─────────────┴────────────────┴───────────────┘
                                  │
                 ┌────────────────┼────────────────┐
                 │                │                │
 ┌───────────────▼─────┐ ┌───────▼──────┐ ┌───────▼──────┐
-│   Debate System     │ │ Vote System  │ │ Player System │
+│   Debate System     │ │ Vote System  │ │Player System │
 └─────────────────────┘ └──────────────┘ └──────────────┘
         │                                        │
 ┌───────▼──────────────┐              ┌──────────▼─────────┐
-│  Speech Generation   │              │   Player UI/Actions │
+│  Speech Generation   │              │  Player UI/Actions │
 └──────────────────────┘              └────────────────────┘
 ```
 
