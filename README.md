@@ -1,8 +1,12 @@
-# Roman Senate Game
+# Roman Senate Game 
 
-In development -- “Cave lusor, cimices adsunt!”
+"AI Agents yelling at each other in historically adjacent Latin"
+
 
 ![Screenshot](/docs/assets/Screenshot%202025-04-14%20at%208.10.38 PM.png)
+
+
+In development -- "Cave lusor, cimices adsunt!"
 
 
 
@@ -51,7 +55,7 @@ The Roman Senate Game is an immersive political simulation set in the late Roman
 Watch AI senators debate and vote on important matters facing Rome:
 
 ```bash
-senate play
+python -m roman_senate.cli play
 ```
 
 ### Interactive Mode
@@ -59,7 +63,7 @@ senate play
 Participate as a senator yourself:
 
 ```bash
-senate play-as-senator
+python -m roman_senate.cli play-as-senator
 ```
 
 ### Command-line Options
@@ -73,7 +77,7 @@ senate play-as-senator
 
 Example:
 ```bash
-senate play --senators 15 --topics 5 --year -50
+python -m roman_senate.cli play --senators 15 --topics 5 --year -50
 ```
 
 #### Interactive Mode Options
@@ -84,7 +88,7 @@ senate play --senators 15 --topics 5 --year -50
 
 Example:
 ```bash
-senate play-as-senator --senators 12 --topics 4 --year -75
+python -m roman_senate.cli play-as-senator --senators 12 --topics 4 --year -75
 ```
 
 ### Game Information
@@ -92,12 +96,12 @@ senate play-as-senator --senators 12 --topics 4 --year -75
 View information about the game:
 
 ```bash
-senate info
+python -m roman_senate.cli info
 ```
 
 ## Game Modes Explained
 
-### Simulation Mode (`senate play`)
+### Simulation Mode (`roman_senate.cli play`)
 
 In Simulation Mode, you watch as AI-controlled senators debate and vote on important matters facing Rome. The game will:
 
@@ -111,7 +115,7 @@ This mode is perfect for:
 - Enjoying the political drama without active participation
 - Studying the sophisticated speech generation system
 
-### Interactive Mode (`senate play-as-senator`)
+### Interactive Mode (`roman_senate.cli play-as-senator`)
 
 In Interactive Mode, you create and play as your own Roman senator, participating actively in the Senate. You will:
 
@@ -184,6 +188,8 @@ For more detailed information about the game components and architecture, see th
 - [Speech Generation Framework](docs/speech_generation.md)
 - [Interactive Mode Guide](docs/interactive_mode.md)
 - [System Architecture](docs/architecture.md)
+- [Roman Senate Traditions](docs/roman_senate_traditions.md)
+- [LLM Provider Configuration](docs/llm_providers.md)
 
 ## License
 

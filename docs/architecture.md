@@ -1,11 +1,12 @@
 # Roman Senate Game: System Architecture
 
 **Author:** Documentation Team  
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Date:** April 14, 2025
 
 ## Table of Contents
 - [Overview](#overview)
+- [Package Structure](#package-structure)
 - [Core Components](#core-components)
 - [Component Relationships](#component-relationships)
 - [Data Flow](#data-flow)
@@ -49,6 +50,67 @@ graph TD
     LLM --> OpenAI[OpenAI Provider]
     LLM --> Ollama[Ollama Provider]
 ```
+
+## Package Structure
+
+The Roman Senate Game has been reorganized into a proper Python package structure to improve maintainability and follow best practices. The source code is now organized as follows:
+
+```
+src/
+└── roman_senate/
+    ├── __init__.py        # Package initialization
+    ├── cli.py             # Command-line interface entry points
+    ├── core/              # Core game mechanics
+    │   ├── __init__.py
+    │   ├── debate.py      # Debate system core
+    │   ├── game_state.py  # Game state management
+    │   ├── senate_session.py # Full session orchestration
+    │   ├── senators.py    # Senator data models
+    │   ├── topic_generator.py # Topic generation
+    │   └── vote.py        # Voting system
+    ├── debate/            # Debate mechanics
+    │   ├── __init__.py
+    │   └── speech_generator.py # Speech generation integration
+    ├── player/            # Player interaction
+    │   ├── __init__.py
+    │   ├── game_loop.py   # Main player game loop
+    │   ├── player.py      # Player data model
+    │   ├── player_actions.py # Available player actions
+    │   ├── player_manager.py # Player state management
+    │   └── player_ui.py   # User interface for player
+    ├── speech/            # Speech generation system
+    │   ├── __init__.py
+    │   ├── archetype_system.py
+    │   ├── classical_structure.py
+    │   ├── historical_context.py
+    │   ├── latin_flourishes.py
+    │   ├── rhetorical_devices.py
+    │   └── speech_generator.py
+    └── utils/             # Shared utilities
+        ├── __init__.py
+        ├── config.py      # Configuration management
+        └── llm/           # LLM integration
+            ├── __init__.py
+            ├── base.py    # Base LLM interface
+            ├── factory.py # LLM provider factory
+            ├── ollama_provider.py # Ollama integration
+            └── openai_provider.py # OpenAI integration
+```
+
+### Package Design Philosophy
+
+The package structure follows these principles:
+
+1. **Separation of Concerns**: Each subpackage has a specific responsibility
+2. **Cohesion**: Related functionality is grouped together
+3. **Loose Coupling**: Minimal dependencies between packages
+4. **Clear Interfaces**: Well-defined interfaces between components
+
+This reorganization enables:
+- Easier navigation of the codebase
+- Proper import paths rather than relative imports
+- Better testability and component isolation
+- Cleaner dependency management
 
 ## Core Components
 
@@ -258,25 +320,25 @@ The modular design offers several extension points for developers:
 
 ### Adding New Senator Archetypes
 
-1. Add new archetype definitions in `archetype_system.py`
+1. Add new archetype definitions in `speech/archetype_system.py`
 2. Define corresponding speech parameters and behaviors
 
 ### Creating New Debate Topics
 
-1. Extend topic categories in `topic_generator.py`
+1. Extend topic categories in `core/topic_generator.py`
 2. Add historical context for the topics
 
 ### Enhancing the Speech Generation System
 
-1. Add new rhetorical devices in `rhetorical_devices.py`
-2. Extend Latin phrases in `latin_flourishes.py`
-3. Add new speech structures in `classical_structure.py`
+1. Add new rhetorical devices in `speech/rhetorical_devices.py`
+2. Extend Latin phrases in `speech/latin_flourishes.py`
+3. Add new speech structures in `speech/classical_structure.py`
 
 ### Expanding Player Mechanics
 
-1. Add new player actions in `player_actions.py`
-2. Create new UI elements in `player_ui.py`
-3. Extend player attributes in `player.py`
+1. Add new player actions in `player/player_actions.py`
+2. Create new UI elements in `player/player_ui.py`
+3. Extend player attributes in `player/player.py`
 
 ### Adding New Game Modes
 
@@ -329,5 +391,7 @@ The game uses a centralized configuration system:
 5. **Interactive Testing**: Verify changes work in interactive mode
 
 ---
+
+> **Historical Note**: Just as the Roman Senate was reorganized by Sulla in 81 BCE to strengthen its power, our codebase has undergone its own reorganization! Sulla expanded the Senate from 300 to 600 members; we've expanded our code into properly organized modules. Sulla's reforms ultimately couldn't save the Republic, but our refactoring should certainly save developer sanity!
 
 This architecture document provides a high-level overview of the Roman Senate Game's structure. For more detailed information about specific components, refer to the code documentation and component-specific guides.
