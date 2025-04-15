@@ -7,6 +7,28 @@ on:
     branches: [ main, master, develop ]
   schedule:
     - cron: '0 0 * * 0'  # Run weekly on Sundays at midnight
+  workflow_dispatch:
+    inputs:
+      senators:
+        description: 'Number of senators to simulate'
+        required: false
+        default: 5
+        type: number
+      debate-rounds:
+        description: 'Number of debate rounds per topic'
+        required: false
+        default: 2
+        type: number
+      topics:
+        description: 'Number of topics to debate'
+        required: false
+        default: 1
+        type: number
+      year:
+        description: 'Year in Roman history (negative for BCE)'
+        required: false
+        default: -100
+        type: number
 
 jobs:
   simulate:
@@ -29,8 +51,13 @@ jobs:
       run: |
         # Set non-interactive test mode for LLM providers
         export ROMAN_SENATE_TEST_MODE=true
-        # Run a complete game simulation
-        python -m roman_senate.cli simulate --senators 5 --debate-rounds 2 --topics 1 --non-interactive
+        # Run a complete game simulation with parameters from workflow dispatch or defaults
+        python -m roman_senate.cli simulate \
+          --senators ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.senators || 5 }} \
+          --debate-rounds ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debate-rounds || 2 }} \
+          --topics ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.topics || 1 }} \
+          --year ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.year || -100 }} \
+          --non-interactive
     
     - name: Archive simulation logs
       if: always()

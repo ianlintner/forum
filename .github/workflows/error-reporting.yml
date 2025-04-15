@@ -1,0 +1,91 @@
+name: Error Log Collection
+
+on:
+  workflow_run:
+    workflows: ["Python Tests", "Game Simulation Test"]
+    types:
+      - completed
+
+jobs:
+  collect-logs:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    
+    steps:
+      - name: Download workflow artifacts
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: ${{ github.event.workflow_run.id }}
+            });
+            
+            const matchArtifact = artifacts.data.artifacts.find(
+              artifact => artifact.name.includes("logs") || artifact.name.includes("test-results") || artifact.name.includes("simulation-logs")
+            );
+            
+            if (matchArtifact) {
+              const download = await github.rest.actions.downloadArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: matchArtifact.id,
+                archive_format: 'zip'
+              });
+              
+              const fs = require('fs');
+              fs.writeFileSync('${{ github.workspace }}/artifact.zip', Buffer.from(download.data));
+            } else {
+              console.log('No log artifacts found');
+            }
+      
+      - name: Extract artifacts
+        if: ${{ success() }}
+        run: |
+          mkdir -p logs
+          unzip -o artifact.zip -d logs || echo "No artifacts to extract"
+      
+      - name: Analyze logs
+        run: |
+          echo "## Workflow Error Summary" > error_report.md
+          echo "Workflow: ${{ github.event.workflow_run.name }}" >> error_report.md
+          echo "Run ID: ${{ github.event.workflow_run.id }}" >> error_report.md
+          echo "URL: ${{ github.event.workflow_run.html_url }}" >> error_report.md
+          echo "" >> error_report.md
+          echo "### Error Analysis" >> error_report.md
+          echo "\`\`\`" >> error_report.md
+          
+          if [ -d "logs" ]; then
+            # Extract error patterns from logs
+            grep -r "ERROR\|Error\|Exception\|Traceback\|FAIL" logs/ >> error_report.md 2>/dev/null || echo "No error patterns found" >> error_report.md
+          else
+            echo "No log files found to analyze" >> error_report.md
+          fi
+          
+          echo "\`\`\`" >> error_report.md
+      
+      - name: Create issue
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const errorReport = fs.readFileSync('error_report.md', 'utf8');
+            
+            const workflowName = '${{ github.event.workflow_run.name }}';
+            const runId = '${{ github.event.workflow_run.id }}';
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[CI Error] ${workflowName} failed - Run ID: ${runId}`,
+              body: errorReport,
+              labels: ['ci-error', 'automated-report']
+            });
+      
+      - name: Upload error report
+        uses: actions/upload-artifact@v3
+        with:
+          name: error-report
+          path: error_report.md

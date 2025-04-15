@@ -281,7 +281,8 @@ The project now implements GitHub Actions workflows for automated testing and ve
 .github/
 └── workflows/
     ├── pytest.yml          # Test suite workflow
-    └── game-simulation.yml # Non-interactive gameplay test
+    ├── game-simulation.yml # Non-interactive gameplay test
+    └── error-reporting.yml # Error log collection and reporting
 ```
 
 #### Test Suite Workflow (pytest.yml)
@@ -294,12 +295,23 @@ on:
     branches: [ main, master, develop ]
   pull_request:
     branches: [ main, master, develop ]
+  workflow_dispatch:
+    inputs:
+      python-version:
+        description: 'Python version to test'
+        required: false
+        default: '3.10'
+        type: choice
+        options:
+        - '3.9'
+        - '3.10'
+        - '3.11'
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.9, 3.10, 3.11]
+        python-version: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', github.event.inputs.python-version)) || fromJSON('[3.9, 3.10, 3.11]') }}
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
@@ -318,7 +330,7 @@ jobs:
 ```
 
 #### Game Simulation Workflow (game-simulation.yml)
-This workflow tests the full game functionality in non-interactive mode to verify core gameplay:
+This workflow tests the full game functionality in non-interactive mode with support for manual triggers:
 
 ```yaml
 name: Game Simulation Test
@@ -329,6 +341,18 @@ on:
     branches: [ main, master, develop ]
   schedule:
     - cron: '0 0 * * 0'  # Run weekly on Sundays at midnight
+  workflow_dispatch:
+    inputs:
+      senators:
+        description: 'Number of senators to simulate'
+        required: false
+        default: 5
+        type: number
+      debate-rounds:
+        description: 'Number of debate rounds per topic'
+        required: false
+        default: 2
+        type: number
 jobs:
   simulate:
     runs-on: ubuntu-latest
@@ -339,22 +363,43 @@ jobs:
       with:
         python-version: '3.10'
         cache: 'pip'
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e .
     - name: Run non-interactive game simulation
       run: |
         export ROMAN_SENATE_TEST_MODE=true
-        python -m roman_senate.cli simulate --senators 5 --debate-rounds 2 --topics 1 --non-interactive
-    - name: Archive simulation logs
-      if: always()
-      uses: actions/upload-artifact@v3
-      with:
-        name: simulation-logs
-        path: |
-          logs/
-          data/saves/
+        python -m roman_senate.cli simulate \
+          --senators ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.senators || 5 }} \
+          --debate-rounds ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debate-rounds || 2 }} \
+          --non-interactive
+```
+
+#### Error Reporting Workflow (error-reporting.yml)
+This workflow automatically collects logs from failed test or simulation runs and creates GitHub issues:
+
+```yaml
+name: Error Log Collection
+on:
+  workflow_run:
+    workflows: ["Python Tests", "Game Simulation Test"]
+    types:
+      - completed
+jobs:
+  collect-logs:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    steps:
+      - name: Download workflow artifacts
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: ${{ github.event.workflow_run.id }}
+            });
+            
+            const matchArtifact = artifacts.data.artifacts.find(
+              artifact => artifact.name.includes("logs") || artifact.name.includes("test-results")
+            );
 ```
 
 ### Non-Interactive Testing Pattern
@@ -408,3 +453,43 @@ The CI/CD integration provides several key benefits:
 3. **Scheduled Testing**: Weekly tests catch issues with external dependencies
 4. **Non-Interactive Verification**: Core gameplay loops can be verified without manual testing
 5. **Artifact Collection**: Logs and game data are preserved for post-test analysis
+6. **Automatic Error Reporting**: Failed workflows trigger error log collection and issue creation
+7. **Manual Trigger Support**: Workflows can be manually triggered with custom parameters
+
+[2025-04-14 21:55:00] - **Error Reporting System**
+
+### Automated Error Detection and Reporting
+
+The system now includes an automated error reporting workflow that activates when test or simulation workflows fail:
+
+```yaml
+name: Error Log Collection
+on:
+  workflow_run:
+    workflows: ["Python Tests", "Game Simulation Test"]
+    types:
+      - completed
+jobs:
+  collect-logs:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+```
+
+#### Error Collection Workflow Features
+
+1. **Cross-Workflow Monitoring**: Monitors other workflows for failures
+2. **Automatic Artifact Download**: Retrieves logs and test results from failed runs
+3. **Error Pattern Detection**: Scans logs for error patterns, exceptions, and tracebacks
+4. **Issue Creation**: Creates GitHub issues with detailed error reports for tracking
+5. **Centralized Error Reporting**: Consolidates errors from different workflows
+6. **Error Classification**: Categorizes errors by workflow type and failure pattern
+
+#### Integration with Development Process
+
+The error reporting system integrates with the development workflow by:
+
+1. Creating GitHub issues automatically for failed CI runs
+2. Including detailed context such as workflow ID, link to run, and error patterns
+3. Applying appropriate labels for filtering and categorization
+4. Providing relevant logs and artifacts for debugging
+5. Enabling developers to quickly identify and fix test failures
