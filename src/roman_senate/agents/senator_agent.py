@@ -3,12 +3,16 @@ Roman Senate AI Game
 Senator Agent Module
 
 This module defines the agent architecture for simulated senators.
+Senators can generate speeches, vote on topics, and interject during
+other senators' speeches with historically authentic reactions.
 """
 
 import asyncio
+import random
 from typing import Dict, List, Optional, Tuple, Any
 
 from ..utils.llm.base import LLMProvider
+from ..core.interjection import Interjection, InterjectionType, InterjectionTiming, generate_fallback_interjection
 from .agent_memory import AgentMemory
 
 class SenatorAgent:
@@ -171,6 +175,321 @@ class SenatorAgent:
         
         return speech, reasoning, latin_text, english_text
         return speech, reasoning
+        
+    async def generate_interjection(
+        self,
+        speaker_name: str,
+        speech_content: Dict[str, Any],
+        context: Dict[str, Any]
+    ) -> Optional[Interjection]:
+        """
+        Generate an interjection in response to another senator's speech.
+        
+        Args:
+            speaker_name: The name of the senator who is speaking
+            speech_content: The content of the speech being responded to
+            context: Additional context about the debate
+            
+        Returns:
+            An Interjection object if the senator decides to interject, None otherwise
+        """
+        # First, determine if this senator should interject
+        if not self._should_interject(speaker_name, speech_content):
+            return None
+            
+        # Determine the type of interjection
+        interjection_type = self._determine_interjection_type(speaker_name, speech_content)
+        
+        # Determine the timing of the interjection
+        timing = self._determine_interjection_timing(interjection_type)
+        
+        # Generate interjection content using LLM
+        latin_content, english_content = await self._generate_interjection_content(
+            speaker_name,
+            speech_content,
+            interjection_type
+        )
+        
+        # Create and return the interjection
+        return Interjection(
+            senator_name=self.name,
+            type=interjection_type,
+            latin_content=latin_content,
+            english_content=english_content,
+            target_senator=speaker_name,
+            timing=timing,
+            intensity=self._calculate_interjection_intensity(speaker_name, interjection_type),
+            causes_disruption=interjection_type in [
+                InterjectionType.PROCEDURAL,
+                InterjectionType.EMOTIONAL
+            ]
+        )
+    
+    def _should_interject(self, speaker_name: str, speech_content: Dict[str, Any]) -> bool:
+        """
+        Determine whether this senator should interject during another's speech.
+        
+        Args:
+            speaker_name: The name of the senator who is speaking
+            speech_content: The content of the speech
+            
+        Returns:
+            True if the senator should interject, False otherwise
+        """
+        # Don't interject during your own speech
+        if speaker_name == self.name:
+            return False
+            
+        # Base probability of interjection
+        base_probability = 0.15  # 15% chance by default
+        
+        # Adjust based on relationship with speaker (stronger feelings = more likely to interject)
+        relationship = self.memory.relationship_scores.get(speaker_name, 0)
+        relationship_factor = abs(relationship) * 0.2  # Max +/- 0.2
+        
+        # Faction alignment affects interjection probability
+        speaker_faction = speech_content.get('faction', '')
+        if speaker_faction == self.faction:
+            # More likely to interject positively for same faction
+            if relationship >= 0:
+                base_probability += 0.1
+        else:
+            # More likely to interject negatively for different faction
+            if relationship < 0:
+                base_probability += 0.15
+                
+        # Prominence affects willingness to speak up
+        prominence = self.senator.get('prominence', 0.5)
+        prominence_factor = (prominence - 0.5) * 0.1  # -0.05 to +0.05
+        
+        # Calculate final probability
+        final_probability = min(0.7, max(0.05, base_probability + relationship_factor + prominence_factor))
+        
+        # Roll the dice
+        return random.random() < final_probability
+    
+    def _determine_interjection_type(self, speaker_name: str, speech_content: Dict[str, Any]) -> InterjectionType:
+        """
+        Determine what type of interjection to make.
+        
+        Args:
+            speaker_name: The name of the senator who is speaking
+            speech_content: The content of the speech
+            
+        Returns:
+            The type of interjection to make
+        """
+        relationship = self.memory.relationship_scores.get(speaker_name, 0)
+        
+        # Relationship strongly influences interjection type
+        if relationship > 0.3:
+            # Positive relationship - more likely to acclaim
+            weights = {
+                InterjectionType.ACCLAMATION: 0.6,
+                InterjectionType.OBJECTION: 0.05,
+                InterjectionType.PROCEDURAL: 0.15,
+                InterjectionType.EMOTIONAL: 0.1,
+                InterjectionType.COLLECTIVE: 0.1
+            }
+        elif relationship < -0.3:
+            # Negative relationship - more likely to object
+            weights = {
+                InterjectionType.ACCLAMATION: 0.05,
+                InterjectionType.OBJECTION: 0.6,
+                InterjectionType.PROCEDURAL: 0.15,
+                InterjectionType.EMOTIONAL: 0.15,
+                InterjectionType.COLLECTIVE: 0.05
+            }
+        else:
+            # Neutral relationship - balanced distribution
+            weights = {
+                InterjectionType.ACCLAMATION: 0.25,
+                InterjectionType.OBJECTION: 0.25,
+                InterjectionType.PROCEDURAL: 0.2,
+                InterjectionType.EMOTIONAL: 0.15,
+                InterjectionType.COLLECTIVE: 0.15
+            }
+            
+        # Faction alignment also affects interjection type
+        speaker_faction = speech_content.get('faction', '')
+        speaker_stance = speech_content.get('stance', '')
+        
+        if speaker_faction == self.faction:
+            # Same faction - more support, less opposition
+            weights[InterjectionType.ACCLAMATION] *= 1.5
+            weights[InterjectionType.OBJECTION] *= 0.5
+        else:
+            # Different faction - more opposition, less support
+            weights[InterjectionType.ACCLAMATION] *= 0.5
+            weights[InterjectionType.OBJECTION] *= 1.5
+            
+        # Match probability to weights
+        total = sum(weights.values())
+        normalized_weights = {k: v/total for k, v in weights.items()}
+        
+        # Random selection based on weights
+        selection = random.random()
+        cumulative = 0
+        for interjection_type, weight in normalized_weights.items():
+            cumulative += weight
+            if selection <= cumulative:
+                return interjection_type
+                
+        # Fallback
+        return InterjectionType.ACCLAMATION
+    
+    def _determine_interjection_timing(self, interjection_type: InterjectionType) -> InterjectionTiming:
+        """
+        Determine when during the speech the interjection should occur.
+        
+        Args:
+            interjection_type: The type of interjection
+            
+        Returns:
+            The timing of the interjection
+        """
+        # Different timings for different types
+        timing_weights = {
+            InterjectionType.ACCLAMATION: {
+                InterjectionTiming.BEGINNING: 0.1,
+                InterjectionTiming.MIDDLE: 0.2,
+                InterjectionTiming.END: 0.7,  # Most acclamations come at the end
+            },
+            InterjectionType.OBJECTION: {
+                InterjectionTiming.BEGINNING: 0.2,
+                InterjectionTiming.MIDDLE: 0.6,  # Most objections come during the speech
+                InterjectionTiming.END: 0.2,
+            },
+            InterjectionType.PROCEDURAL: {
+                InterjectionTiming.BEGINNING: 0.4,  # Procedural points often at beginning
+                InterjectionTiming.MIDDLE: 0.4,
+                InterjectionTiming.END: 0.2,
+            },
+            InterjectionType.EMOTIONAL: {
+                InterjectionTiming.BEGINNING: 0.2,
+                InterjectionTiming.MIDDLE: 0.5,
+                InterjectionTiming.END: 0.3,
+            },
+            InterjectionType.COLLECTIVE: {
+                InterjectionTiming.BEGINNING: 0.1,
+                InterjectionTiming.MIDDLE: 0.3,
+                InterjectionTiming.END: 0.6,  # Collective reactions often at end
+            }
+        }
+        
+        # Use appropriate weights for this interjection type
+        weights = timing_weights.get(interjection_type, {
+            InterjectionTiming.BEGINNING: 0.2,
+            InterjectionTiming.MIDDLE: 0.5,
+            InterjectionTiming.END: 0.3,
+        })
+        
+        # Random selection based on weights
+        selection = random.random()
+        cumulative = 0
+        for timing, weight in weights.items():
+            cumulative += weight
+            if selection <= cumulative:
+                return timing
+                
+        # Fallback
+        return InterjectionTiming.MIDDLE
+    
+    def _calculate_interjection_intensity(self, speaker_name: str, interjection_type: InterjectionType) -> float:
+        """
+        Calculate the intensity of the interjection.
+        
+        Args:
+            speaker_name: The name of the senator who is speaking
+            interjection_type: The type of interjection
+            
+        Returns:
+            Intensity value between 0.0 and 1.0
+        """
+        # Base intensity depends on interjection type
+        base_intensity = {
+            InterjectionType.ACCLAMATION: 0.4,
+            InterjectionType.OBJECTION: 0.6,
+            InterjectionType.PROCEDURAL: 0.5,
+            InterjectionType.EMOTIONAL: 0.8,
+            InterjectionType.COLLECTIVE: 0.4
+        }.get(interjection_type, 0.5)
+        
+        # Adjust based on relationship strength
+        relationship = self.memory.relationship_scores.get(speaker_name, 0)
+        relationship_factor = abs(relationship) * 0.3  # Strong feelings (positive or negative) intensify
+        
+        # Random variation
+        random_factor = random.uniform(-0.1, 0.1)
+        
+        # Calculate final intensity
+        intensity = base_intensity + relationship_factor + random_factor
+        
+        # Ensure within bounds
+        return min(1.0, max(0.1, intensity))
+    
+    async def _generate_interjection_content(
+        self,
+        speaker_name: str,
+        speech_content: Dict[str, Any],
+        interjection_type: InterjectionType
+    ) -> Tuple[str, str]:
+        """
+        Generate the content of the interjection using LLM.
+        
+        Args:
+            speaker_name: The name of the senator who is speaking
+            speech_content: The content of the speech
+            interjection_type: The type of interjection
+            
+        Returns:
+            Tuple of (latin_content, english_content)
+        """
+        # Create a descriptive prompt for the LLM
+        prompt = f"""
+        You are Senator {self.name}, a {self.faction} senator in the Roman Senate.
+        Senator {speaker_name} from the {speech_content.get('faction', 'unknown')} faction is giving a speech.
+        
+        Generate a brief, historically authentic interjection in the style of a {interjection_type.value} reaction.
+        Your interjection should be only 1-3 short sentences or phrases.
+        
+        For context:
+        - Your stance on the topic: {self.current_stance if hasattr(self, 'current_stance') else 'unknown'}
+        - Speaker's stance: {speech_content.get('stance', 'unknown')}
+        - Your relationship with speaker: {self.memory.relationship_scores.get(speaker_name, 0):.2f} (-1.0 hostile to 1.0 friendly)
+        
+        Return ONLY your interjection in this exact format:
+        LATIN: [Your interjection in Classical Latin]
+        ENGLISH: [English translation of your interjection]
+        """
+        
+        try:
+            # Get response from LLM
+            response = await self.llm_provider.generate_text(prompt)
+            
+            # Parse Latin and English content from response
+            latin_content = ""
+            english_content = ""
+            
+            lines = response.strip().split('\n')
+            for line in lines:
+                if line.startswith("LATIN:"):
+                    latin_content = line[6:].strip()
+                elif line.startswith("ENGLISH:"):
+                    english_content = line[8:].strip()
+            
+            # Verify we have both parts
+            if not latin_content or not english_content:
+                # Use fallback if parsing failed
+                fallback = generate_fallback_interjection(self.name, speaker_name, interjection_type)
+                return fallback.latin_content, fallback.english_content
+                
+            return latin_content, english_content
+            
+        except Exception as e:
+            # If LLM generation fails, use fallback
+            fallback = generate_fallback_interjection(self.name, speaker_name, interjection_type)
+            return fallback.latin_content, fallback.english_content
     
     async def vote(self, topic: str, context: Dict) -> Tuple[str, str]:
         """

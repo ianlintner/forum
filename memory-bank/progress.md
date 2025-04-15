@@ -2,6 +2,16 @@
 
 ## Major Milestones
 
+[2025-04-15 04:11:00] - **Senator Interjections System Implementation**
+- Created comprehensive interjection system for more authentic Roman Senate debates:
+  - Implemented 5 historically accurate interjection types (Acclamation, Objection, Procedural, Emotional, Collective)
+  - Added probability-based interjection generation based on relationships and topic controversy
+  - Created Latin and English versions of all interjections using the two-prompt approach
+  - Enhanced debate display to include interjections at appropriate moments
+  - Added relationship impacts from interjections to strengthen political dynamics
+  - Implemented color-coded display for different interjection types
+- Updated memory bank documentation to reflect the new feature
+
 [2025-04-15 03:52:00] - **Latin Generation and Display Improvements**
 - Implemented two-prompt approach for speech generation:
   - First prompt generates English content

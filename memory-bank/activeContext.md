@@ -2,6 +2,13 @@
 
 ## Current Focus
 
+[2025-04-15 04:11:00] - **Senator Interjections System Implementation**
+- Implemented historically authentic interjections during Senate debates
+- Created multiple interjection types (acclamation, objection, procedural, emotional, collective)
+- Integrated interjection generation with the two-prompt approach (Latin and English)
+- Added relationship effects from interjections, enhancing political dynamics
+- Improved debate display to show interjections at appropriate moments in speeches
+
 [2025-04-15 03:52:00] - **Latin Generation and Display Improvements**
 - Implemented two-prompt approach for Latin generation (separate English and Latin)
 - Fixed stance terminology standardization across the codebase
@@ -28,6 +35,10 @@
 
 ## Recent Changes
 
+[2025-04-15 04:11:00] - Implemented senator interjections system for more dynamic debates
+[2025-04-15 04:10:00] - Enhanced debate module to display interjections at appropriate points
+[2025-04-15 04:09:00] - Added interjection generation to senator agents
+[2025-04-15 04:08:00] - Created core interjection classes and data structures
 [2025-04-15 03:52:00] - Implemented two-prompt approach for Latin generation
 [2025-04-15 03:45:00] - Fixed senator stance terminology standardization
 [2025-04-15 03:35:00] - Enhanced Latin text extraction and error handling

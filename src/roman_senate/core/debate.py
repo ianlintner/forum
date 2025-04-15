@@ -13,12 +13,15 @@ during senate deliberations.
 import random
 import asyncio
 import time
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 import logging
 from collections import defaultdict
 from rich.panel import Panel
 from rich.text import Text
 from rich.console import Console
+from rich.style import Style
+
+from ..core.interjection import Interjection, InterjectionType, InterjectionTiming
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
@@ -681,7 +684,7 @@ async def generate_speech(
 
 async def conduct_debate(
     topic: str, senators_list: List[Dict], rounds: int = 3, topic_category: str = None,
-    year: int = None
+    year: int = None, environment = None
 ):
     """
     Conduct a debate on the given topic with interactive responses between senators.
@@ -801,8 +804,53 @@ async def conduct_debate(
         for i, speech in enumerate(speech_results):
             senator = speakers[i]
             
-            # Display the speech in an immersive format
-            display_speech(senator, speech, topic)
+            # Generate interjections if environment is provided
+            interjections = []
+            if environment:
+                # Convert speech data for interjection generation
+                speech_data = {
+                    "senator_name": senator["name"],
+                    "faction": senator["faction"],
+                    "stance": speech.get("stance", "neutral"),
+                    "latin_text": speech.get("latin_text", ""),
+                    "english_text": speech.get("english_text", ""),
+                    "key_points": speech.get("key_points", [])
+                }
+                context = {"topic": topic, "category": topic_category, "year": year}
+                
+                # Get interjections from other senators
+                interjections = await environment.generate_interjections(
+                    senator["name"],
+                    speech_data,
+                    context
+                )
+            
+            # Display the speech in an immersive format with interjections
+            display_speech(senator, speech, topic, interjections)
+            
+            # Update relationships based on interjections
+            if environment and interjections:
+                for interjection in interjections:
+                    # Determine relationship change based on interjection type
+                    if interjection.type == InterjectionType.ACCLAMATION:
+                        # Positive reaction
+                        change = 0.1
+                    elif interjection.type == InterjectionType.OBJECTION:
+                        # Negative reaction
+                        change = -0.1
+                    elif interjection.type == InterjectionType.EMOTIONAL:
+                        # Stronger impact on relationship
+                        change = -0.15 if interjection.intensity > 0.6 else -0.1
+                    else:
+                        # Other types have smaller impact
+                        change = 0.05 if interjection.type == InterjectionType.PROCEDURAL else 0
+                    
+                    # Update the relationship in both directions
+                    speaker_agent = environment.get_senator_agent(senator["name"])
+                    interjecter_agent = environment.get_senator_agent(interjection.senator_name)
+                    if speaker_agent and interjecter_agent:
+                        speaker_agent.memory.update_relationship(interjection.senator_name, change)
+                        interjecter_agent.memory.update_relationship(senator["name"], change)
             
             # Score the speech
             score = score_argument(speech["english_text"], topic)
@@ -833,14 +881,15 @@ async def conduct_debate(
     return debate_summary
 
 
-def display_speech(senator: Dict, speech: Dict, topic: str = ""):
+def display_speech(senator: Dict, speech: Dict, topic: str = "", interjections: List[Interjection] = None):
     """
-    Display a senator's speech with Latin and English versions.
+    Display a senator's speech with Latin and English versions, including any interjections.
     
     Args:
         senator: Senator data
         speech: Speech data including latin_text and english_text
         topic: The debate topic (optional)
+        interjections: List of interjections to display during the speech
     """
     # Get the speech text in both languages
     latin = speech.get("latin_text", "")
@@ -853,18 +902,6 @@ def display_speech(senator: Dict, speech: Dict, topic: str = ""):
     
     # Create a header with senator information
     header = f"[bold]{senator['name']}[/] ([italic]{senator['faction']}[/]) addresses the Senate:"
-    
-    latin_panel = Panel(
-        f"[italic yellow]{latin}[/]",
-        title="Latin",
-        border_style="blue"
-    )
-    
-    english_panel = Panel(
-        f"[italic white]{english}[/]",
-        title="English",
-        border_style="blue"
-    )
     
     # Get the stance from speech data, with fallback
     stance = speech.get("stance", "neutral")
@@ -880,11 +917,142 @@ def display_speech(senator: Dict, speech: Dict, topic: str = ""):
     
     stance_text = f"{senator['name']} {stance_tag} the proposal."
     
-    # Display the full speech
+    # Display the full speech with interjections
     console.print("\n" + header)
-    console.print(latin_panel)
-    console.print(english_panel)
+    
+    # Process and display the speech with interjections
+    if interjections:
+        _display_speech_with_interjections(latin, english, interjections)
+    else:
+        # Display without interjections (standard format)
+        latin_panel = Panel(
+            f"[italic yellow]{latin}[/]",
+            title="Latin",
+            border_style="blue"
+        )
+        
+        english_panel = Panel(
+            f"[italic white]{english}[/]",
+            title="English",
+            border_style="blue"
+        )
+        
+        console.print(latin_panel)
+        console.print(english_panel)
+    
     console.print(f"\n[bold]Position:[/] {stance_text}")
+
+
+def _display_speech_with_interjections(latin_text: str, english_text: str, interjections: List[Interjection]):
+    """
+    Display a speech with interjections at appropriate points.
+    
+    Args:
+        latin_text: Latin version of the speech
+        english_text: English version of the speech
+        interjections: List of interjections to include
+    """
+    # Split speech into sections for inserting interjections
+    latin_paragraphs = latin_text.split('\n')
+    english_paragraphs = english_text.split('\n')
+    
+    # Ensure we have at least one paragraph
+    if not latin_paragraphs:
+        latin_paragraphs = [""]
+    if not english_paragraphs:
+        english_paragraphs = [""]
+    
+    # Group interjections by timing
+    beginning_interjections = [i for i in interjections if i.timing == InterjectionTiming.BEGINNING]
+    middle_interjections = [i for i in interjections if i.timing == InterjectionTiming.MIDDLE]
+    end_interjections = [i for i in interjections if i.timing == InterjectionTiming.END]
+    any_interjections = [i for i in interjections if i.timing == InterjectionTiming.ANY]
+    
+    # Display Latin panel header
+    console.print(Panel("", title="Latin", border_style="blue"))
+    
+    # Display beginning interjections
+    if beginning_interjections:
+        for interjection in beginning_interjections:
+            _display_interjection(interjection, "latin")
+    
+    # Calculate where to put "any" timed interjections
+    any_positions = []
+    if any_interjections:
+        # Distribute them throughout the speech
+        total_paragraphs = len(latin_paragraphs)
+        for i, _ in enumerate(any_interjections):
+            # Place evenly through the speech
+            pos = max(0, min(total_paragraphs - 1,
+                             int(i * total_paragraphs / (len(any_interjections) + 1))))
+            any_positions.append(pos)
+    
+    # Display Latin paragraphs with interjections
+    for i, paragraph in enumerate(latin_paragraphs):
+        console.print(f"[italic yellow]{paragraph}[/]")
+        
+        # Show any interjections at this position
+        if i in any_positions:
+            idx = any_positions.index(i)
+            if idx < len(any_interjections):
+                _display_interjection(any_interjections[idx], "latin")
+        
+        # Show middle interjections after the middle paragraph
+        if i == len(latin_paragraphs) // 2 and middle_interjections:
+            for interjection in middle_interjections:
+                _display_interjection(interjection, "latin")
+    
+    # Show end interjections
+    if end_interjections:
+        for interjection in end_interjections:
+            _display_interjection(interjection, "latin")
+    
+    # Display English panel header
+    console.print(Panel("", title="English", border_style="blue"))
+    
+    # Display beginning interjections (English)
+    if beginning_interjections:
+        for interjection in beginning_interjections:
+            _display_interjection(interjection, "english")
+    
+    # Display English paragraphs with interjections
+    for i, paragraph in enumerate(english_paragraphs):
+        console.print(f"[italic white]{paragraph}[/]")
+        
+        # Show any interjections at this position
+        if i in any_positions:
+            idx = any_positions.index(i)
+            if idx < len(any_interjections):
+                _display_interjection(any_interjections[idx], "english")
+        
+        # Show middle interjections after the middle paragraph
+        if i == len(english_paragraphs) // 2 and middle_interjections:
+            for interjection in middle_interjections:
+                _display_interjection(interjection, "english")
+    
+    # Show end interjections
+    if end_interjections:
+        for interjection in end_interjections:
+            _display_interjection(interjection, "english")
+
+
+def _display_interjection(interjection: Interjection, language: str = "both"):
+    """
+    Display an interjection in the appropriate format and language.
+    
+    Args:
+        interjection: The interjection to display
+        language: Which language version to display ("latin", "english", or "both")
+    """
+    style = interjection.get_display_style()
+    color = style.get("color", "white")
+    prefix = style.get("prefix", "[Comment]")
+    
+    if language == "latin" or language == "both":
+        console.print(f"  [bold {color}]{prefix} {interjection.senator_name}:[/] [italic {color}]{interjection.latin_content}[/]")
+    
+    if language == "english" or language == "both":
+        console.print(f"  [bold {color}]{prefix} {interjection.senator_name}:[/] [italic {color}]{interjection.english_content}[/]")
 
 
 def score_argument(argument: str, topic: str) -> Dict[str, float]:

@@ -4,11 +4,13 @@ Agent Environment Module
 
 This module defines the simulation environment for senate agents.
 """
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 import asyncio
 import json
+import random
 from rich.console import Console
 from ..utils.llm.base import LLMProvider
+from ..core.interjection import Interjection, InterjectionType
 from .senator_agent import SenatorAgent
 
 console = Console()
@@ -33,6 +35,7 @@ class SenateEnvironment:
         self.topics = []
         self.current_topic = None
         self.year = -100  # Default to 100 BCE
+        self.topic_controversy = 0.5  # Default controversy level
     
     def initialize_agents(self, senators: List[Dict[str, Any]]):
         """
@@ -79,6 +82,8 @@ class SenateEnvironment:
         Returns:
             Dict containing debate results and voting outcome
         """
+        # Set a random controversy level for this topic
+        self.set_topic_controversy(random.uniform(0.3, 0.9))
         # Handle both dictionary and tuple formats for topics
         if isinstance(topic, tuple) and len(topic) == 2:
             # Topic is a tuple of (text, category)
@@ -120,78 +125,21 @@ class SenateEnvironment:
         # Run debate rounds
         speeches = []
         
-        from ..core.debate import display_speech, score_argument
+        from ..core.debate import display_speech, score_argument, conduct_debate
         
-        for round_num in range(1, rounds + 1):
-            console.print(f"\n[bold cyan]DEBATE ROUND {round_num}[/]")
-            
-            for agent in self.agents:
-                try:
-                    # Try with the new two-prompt approach (returns 4 values)
-                    speech_text, reasoning, latin_text, english_text = await agent.generate_speech(topic_text, context)
-                except ValueError:
-                    # Fallback for backward compatibility (returns 2 values)
-                    speech_text, reasoning = await agent.generate_speech(topic_text, context)
-                    latin_text = None
-                    english_text = None
+        # Use the conduct_debate function from debate.py for better interjection handling
+        debate_summary = await conduct_debate(
+            topic=clean_topic_text,
+            senators_list=[agent.senator for agent in self.agents],
+            rounds=rounds,
+            topic_category=category,
+            year=self.year,
+            environment=self  # Pass the environment for interjection support
+        )
+        
+        # Store the speeches for the voting context
+        context["previous_speeches"] = debate_summary
                 
-                # Format speech data for traditional display
-                speech_data = {
-                    "senator": agent.name,
-                    "senator_name": agent.name,
-                    "faction": agent.faction,
-                    "stance": stances[agent.name],
-                    "speech": speech_text,
-                    "reasoning": reasoning,
-                    # Handle both the two-prompt approach and backward compatibility
-                    "latin_text": latin_text if 'latin_text' in locals() else self._extract_latin(speech_text),
-                    "english_text": english_text if 'english_text' in locals() else self._extract_english(speech_text),
-                    "full_text": speech_text,  # For backward compatibility
-                    "key_points": reasoning.split(". ")[:2] if reasoning else [],
-                    "year": self.year,
-                    "year_display": f"{abs(self.year)} BCE",
-                    "speech_length": "3-4",  # Default values
-                    "argument_quality": "sound and reasonable",
-                    "rhetorical_flourishes": "2-3",
-                    "quality_factor": 0.7,
-                    "eloquence": 0.7,
-                }
-                
-                # Add to speeches collection
-                speeches.append(speech_data)
-                
-                # Display the speech using the traditional rich formatting
-                senator_info = {"name": agent.name, "faction": agent.faction}
-                display_speech(senator_info, speech_data, topic_text)
-                
-                # Score and display speech evaluation
-                # With the two-prompt approach, we should have a dedicated english_text
-                # but fallback to the full speech if not available
-                if speech_data["english_text"] and speech_data["english_text"].strip():
-                    score = score_argument(speech_data["english_text"], topic_text)
-                else:
-                    score = score_argument(speech_text, topic_text)
-                
-                # Display score
-                console.print(f"[dim](Rhetorical approach: {reasoning})[/dim]")
-                
-                # Show the score as in traditional simulation
-                from rich.table import Table
-                score_table = Table(title="Speech Assessment")
-                score_table.add_column("Criterion", style="cyan")
-                score_table.add_column("Score", justify="right")
-                
-                for criterion, value in score.items():
-                    if criterion != "total":
-                        score_table.add_row(
-                            criterion.replace("_", " ").title(), f"{value:.2f}"
-                        )
-                
-                score_table.add_row("Overall", f"[bold]{score['total']:.2f}[/]")
-                console.print(score_table)
-                
-                # Simulate a short delay between speeches for readability
-                await asyncio.sleep(0.5)
         
         # Run the vote
         console.print("\n[bold magenta]VOTING BEGINS[/]")
@@ -261,8 +209,15 @@ class SenateEnvironment:
                 else:
                     final_vote = vote
                 
-                # Update vote counts
-                votes[final_vote] += 1
+                # Map the vote values from "support"/"oppose" to "for"/"against"
+                vote_mapping = {
+                    "support": "for",
+                    "oppose": "against"
+                }
+                
+                # Update vote counts with mapped value
+                mapped_vote = vote_mapping.get(final_vote, final_vote)
+                votes[mapped_vote] += 1
                 
                 # Add to voting record
                 stance = stances.get(agent.name, "unknown")
@@ -637,3 +592,99 @@ class SenateEnvironment:
             cleaned = cleaned.replace('[\"', '').replace('\"]', '')
             
         return cleaned.strip()
+        
+    def get_senator_agent(self, senator_name: str) -> Optional['SenatorAgent']:
+        """
+        Get a senator agent by name.
+        
+        Args:
+            senator_name: The name of the senator to find
+            
+        Returns:
+            The senator agent with the given name, or None if not found
+        """
+        for agent in self.agents:
+            if agent.name == senator_name:
+                return agent
+        return None
+        
+    def get_relationship(self, senator1: str, senator2: str) -> float:
+        """
+        Get the relationship value between two senators.
+        
+        Args:
+            senator1: The name of the first senator
+            senator2: The name of the second senator
+            
+        Returns:
+            The relationship value (-1.0 to 1.0) between the senators
+        """
+        agent1 = self.get_senator_agent(senator1)
+        if not agent1:
+            return 0.0
+            
+        return agent1.memory.relationship_scores.get(senator2, 0)
+        
+    def get_topic_controversy(self) -> float:
+        """
+        Get the controversy level of the current topic.
+        
+        Returns:
+            A value between 0.0 and 1.0 representing how controversial the topic is
+        """
+        return self.topic_controversy
+        
+    def set_topic_controversy(self, level: float):
+        """
+        Set the controversy level of the current topic.
+        
+        Args:
+            level: A value between 0.0 and 1.0
+        """
+        self.topic_controversy = max(0.0, min(1.0, level))
+        
+    async def generate_interjections(
+        self,
+        speaking_senator: str,
+        speech_content: Dict[str, Any],
+        context: Dict[str, Any]
+    ) -> List[Interjection]:
+        """
+        Generate interjections from senators in response to a speech.
+        
+        Args:
+            speaking_senator: The name of the senator giving the speech
+            speech_content: The content of the speech
+            context: Additional context about the debate
+            
+        Returns:
+            A list of Interjection objects
+        """
+        interjections = []
+        
+        # For each senator, check if they want to interject
+        for agent in self.agents:
+            # Skip the speaking senator
+            if agent.name == speaking_senator:
+                continue
+                
+            # Generate interjection
+            interjection = await agent.generate_interjection(
+                speaking_senator,
+                speech_content,
+                context
+            )
+            
+            if interjection:
+                interjections.append(interjection)
+                
+        # Limit the number of interjections to avoid overwhelming the speech
+        max_interjections = min(3, len(interjections))
+        if len(interjections) > max_interjections:
+            # Select a random subset of interjections
+            selected_interjections = random.sample(interjections, max_interjections)
+            # Sort by timing and type
+            return sorted(selected_interjections,
+                          key=lambda i: (i.timing.value, i.type.value))
+        
+        return sorted(interjections, key=lambda i: (i.timing.value, i.type.value))

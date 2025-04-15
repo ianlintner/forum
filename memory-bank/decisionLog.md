@@ -2,6 +2,39 @@
 
 ## Key Design Decisions
 
+[2025-04-15 04:11:00] - **Senator Interjections System Implementation**
+
+**Decision:** Implement a historically authentic system for senator interjections during debates.
+
+**Rationale:**
+- Roman Senate debates were known for interruptions and spontaneous reactions
+- Adds dynamism and authenticity to the simulation experience
+- Creates more emergent political interactions between senators
+- Enhances relationship development based on debate interactions
+- Provides visual variety to break up speech displays
+
+**Implementation:**
+- Created new `interjection.py` module with the following components:
+  - `InterjectionType` enum (Acclamation, Objection, Procedural, Emotional, Collective)
+  - `InterjectionTiming` enum (Beginning, Middle, End, Any)
+  - `Interjection` dataclass with comprehensive attributes
+  - Fallback generation for LLM failures
+- Enhanced `SenatorAgent` with interjection capabilities:
+  - Added `generate_interjection()` method using two-prompt approach
+  - Implemented probability-based interjection decision system
+  - Created relationship-based interjection type determination
+  - Added timing and intensity calculations
+- Updated `SenateEnvironment` with interjection support:
+  - Added methods to generate interjections from multiple senators
+  - Implemented topic controversy tracking
+  - Enhanced relationship impact from interjections
+- Modified `debate.py` to display interjections:
+  - Added specialized display methods for Latin and English interjections
+  - Implemented paragraph-based interjection placement
+  - Created color-coded display based on interjection type
+
+This implementation significantly enhances the historical authenticity of the simulation while creating more dynamic, unpredictable debates with richer interpersonal dynamics.
+
 [2025-04-15 03:52:00] - **Two-Prompt Approach for Latin Generation**
 
 **Decision:** Implement a sequential two-prompt approach for Latin generation, separating English content generation from Latin translation.

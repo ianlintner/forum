@@ -91,5 +91,47 @@
     "Religious matters": [
       "Proposal for the construction of a new temple dedicated to Jupiter Optimus Maximus, reflecting Rome's dominion over its territories\", \"Debate on the official recognition of the Cult of Magna Mater"
     ]
+  },
+  "100": {
+    "Military funding": [
+      "Funding for Marius's newly reformed legions to defend against Germanic tribes",
+      "Increased naval budget for safeguarding Roman trade routes in the Mediterranean Sea"
+    ],
+    "Public projects": [
+      "Construction of a new grain storage facility in Ostia to prevent future famine",
+      "Building of a new amphitheater in Rome to accommodate gladiatorial games and public spectacles"
+    ],
+    "Personal ego projects": [
+      "A grand monument in Rome to celebrate Marius's victories over the Cimbri and Teutones",
+      "Construction of a lavish villa for Sulla in the upscale Palatine Hill district"
+    ],
+    "Military campaigns": [
+      "Launching a new campaign against the remaining strongholds of the Cimbri in Northern Europe",
+      "Increasing presence in Asia Minor to counter Mithridates VI of Pontus"
+    ],
+    "Class rights": [
+      "Enactment of laws to protect the rights of Roman citizens in newly conquered provinces",
+      "Proposing reforms to limit the power of the Patrician class and increase the influence of the Plebeian class"
+    ],
+    "General laws": [
+      "Establishing a law to control grain supply and pricing to prevent famine and social unrest",
+      "A new law to prevent military commanders from holding political office while in command of an army"
+    ],
+    "Trade relations": [
+      "Establishing formal trade agreements with the Hellenistic kingdoms of the East",
+      "Debate on increasing tariffs on goods imported from Carthaginian territories in North Africa"
+    ],
+    "Foreign relations": [
+      "A diplomatic mission to the Parthian Empire to ensure peace along Rome's eastern borders",
+      "Discussion on the status of Egypt as a Roman ally or potential province"
+    ],
+    "Religious matters": [
+      "Debate on the influence of foreign gods and cults in Rome",
+      "Discussion on the role of the Vestal Virgins and their influence on state affairs"
+    ],
+    "Economic policy": [
+      "Discussion on the regulation of land ownership to prevent accumulation of wealth by a few",
+      "Debate on the minting of new coins to stabilize the Roman economy"
+    ]
   }
 }

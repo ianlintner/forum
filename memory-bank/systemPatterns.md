@@ -2,6 +2,93 @@
 
 ## Architecture Patterns
 
+### Interjections System Pattern (Added 2025-04-15)
+The system now implements a historically authentic interjection system for senator reactions during debates:
+
+#### Key Components
+- **InterjectionType Enum**: Defines different types of interjections (Acclamation, Objection, Procedural, Emotional, Collective)
+- **InterjectionTiming Enum**: Controls when interjections occur during speeches (Beginning, Middle, End, Any)
+- **Interjection Class**: Data structure with rich attributes for complete interjection representation
+- **Probability-Based Generation**: Determines when senators interject based on relationships and context
+- **Two-Language Generation**: Produces both Latin and English versions of all interjections
+
+#### Implementation Pattern
+```python
+# Determine if a senator should interject
+def _should_interject(self, speaker_name, speech_content):
+    # Base probability adjusted by various factors
+    base_probability = 0.15  # 15% chance by default
+    
+    # Relationship strength increases chance (stronger feelings = more likely to react)
+    relationship = self.memory.get_relationship(speaker_name)
+    relationship_factor = abs(relationship) * 0.2
+    
+    # Faction alignment affects interjection type
+    if speaker_faction == self.faction:
+        # More likely to support same faction
+        if relationship >= 0:
+            base_probability += 0.1
+    else:
+        # More likely to object to different faction
+        if relationship < 0:
+            base_probability += 0.15
+    
+    # Additional factors and final calculation
+    final_probability = min(0.7, max(0.05, base_probability + factors))
+    
+    # Randomized decision
+    return random.random() < final_probability
+```
+
+#### Display Pattern
+The system integrates interjections into speech display with timing-appropriate placement:
+```python
+# Display speech with interjections
+def _display_speech_with_interjections(latin_text, english_text, interjections):
+    # Group interjections by timing
+    beginning_interjections = [i for i in interjections if i.timing == InterjectionTiming.BEGINNING]
+    middle_interjections = [i for i in interjections if i.timing == InterjectionTiming.MIDDLE]
+    end_interjections = [i for i in interjections if i.timing == InterjectionTiming.END]
+    
+    # Display beginning interjections
+    for interjection in beginning_interjections:
+        _display_interjection(interjection)
+    
+    # Display paragraphs with interleaved interjections
+    for i, paragraph in enumerate(paragraphs):
+        console.print(paragraph)
+        
+        # Show middle interjections at appropriate points
+        if timing_matches(i):
+            _display_interjection(middle_interjection)
+    
+    # Display end interjections
+    for interjection in end_interjections:
+        _display_interjection(interjection)
+```
+
+#### Relationship Impact
+Interjections dynamically affect senator relationships based on type and content:
+```python
+# Update relationships from interjections
+if interjection.type == InterjectionType.ACCLAMATION:
+    # Positive reaction improves relationship
+    change = 0.1
+elif interjection.type == InterjectionType.OBJECTION:
+    # Negative reaction harms relationship
+    change = -0.1
+elif interjection.type == InterjectionType.EMOTIONAL:
+    # Stronger impact with emotional reactions
+    change = -0.15 if interjection.intensity > 0.6 else -0.1
+```
+
+#### Benefits
+- Enhanced historical authenticity of Senate sessions
+- More dynamic and unpredictable debates
+- Richer interpersonal dynamics between senators
+- Visual variety in speech display
+- Stronger emergent narrative through spontaneous interactions
+
 ### Two-Prompt Approach for Language Generation (Added 2025-04-15)
 The system now implements a sequential two-prompt approach for generating content in multiple languages:
 
