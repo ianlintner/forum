@@ -10,8 +10,10 @@ including calendar tracking, senators, topics, and voting history.
 """
 
 from typing import List, Dict, Any, Optional, Tuple, Union
+import asyncio
 
 from .roman_calendar import RomanCalendar, CalendarType, DateFormat
+from ..agents.story_crier_agent import StoryCrierAgent
 
 
 class GameState:
@@ -28,6 +30,7 @@ class GameState:
         self.year = None
         self.voting_results = []
         self.calendar = None  # Calendar will be initialized when year is set
+        self.story_crier = StoryCrierAgent()  # Initialize the story crier agent
         
     def add_topic_result(self, topic, votes):
         """
@@ -87,7 +90,11 @@ class GameState:
         if self.calendar is None:
             self.initialize_calendar()
         
-        return self.calendar.advance_day(days)
+        # Store the special days to return
+        special_days = self.calendar.advance_day(days)
+        
+        # Return the special days
+        return special_days
     
     def get_formatted_date(self, format_type=DateFormat.MODERN):
         """
@@ -115,6 +122,58 @@ class GameState:
             self.initialize_calendar()
         
         return self.calendar.can_hold_senate_session()
+    
+    async def generate_daily_announcements(self, count=3):
+        """
+        Generate and display historical announcements for the current day.
+        
+        Args:
+            count: Number of announcements to generate
+            
+        Returns:
+            List of announcement dictionaries
+        """
+        if self.calendar is None:
+            self.initialize_calendar()
+        
+        # Get the current date components
+        current_year = self.calendar.year
+        current_month = self.calendar.month
+        current_day = self.calendar.day
+        
+        # Generate announcements for this date
+        announcements = await self.story_crier.generate_announcements(
+            year=current_year,
+            month=current_month,
+            day=current_day,
+            count=count
+        )
+        
+        # Display the announcements with the custom formatting
+        self.story_crier.display_announcements(announcements)
+        
+        return announcements
+    
+    def display_daily_announcements(self, count=3):
+        """
+        Synchronous wrapper for generate_daily_announcements.
+        For environments where asyncio cannot be used.
+        
+        Args:
+            count: Number of announcements to generate
+            
+        Returns:
+            None
+        """
+        # Create a new event loop if needed
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        # Run the async function
+        return loop.run_until_complete(self.generate_daily_announcements(count))
 
 
 # Create a global instance of the game state

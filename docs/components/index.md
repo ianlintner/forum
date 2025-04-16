@@ -16,6 +16,7 @@ The Roman Senate Game is built with four key components that work together to cr
 | **PresidingOfficials** | Manages the magistrates who presided over Senate sessions, including their selection, personalities, and rulings | [PresidingOfficials Documentation](presiding_officials.md) |
 | **Interjections** | Adds dynamic interactions during Senate debates through various types of interruptions by other senators | [Interjections Documentation](interjections.md) |
 | **PoliticalManeuvering** | Simulates the behind-the-scenes negotiations, faction politics, and favor trading central to Roman political life | [PoliticalManeuvering Documentation](political_maneuvering.md) |
+| **StoryCrier** | Provides historical context and announcements through a town crier system that communicates relevant events from Roman history | [StoryCrier Documentation](story_crier.md) |
 
 ## Component Integration
 
@@ -26,6 +27,7 @@ graph TD
     SS[SenateSession] --- PO[PresidingOfficials]
     SS --- INT[Interjections]
     SS --- PM[PoliticalManeuvering]
+    SS --- SC[StoryCrier]
     
     PO -.-> INT[Interjections]
     PM -.-> INT[Interjections]
@@ -34,7 +36,7 @@ graph TD
     classDef supporting fill:#99ccff,stroke:#333,stroke-width:1px;
     
     class SS core;
-    class PO,INT,PM supporting;
+    class PO,INT,PM,SC supporting;
 ```
 
 The SenateSession acts as the central coordinator, while the other components provide specialized functionality that enhances different aspects of the simulation.
@@ -44,6 +46,7 @@ The SenateSession acts as the central coordinator, while the other components pr
 - **SenateSession + PresidingOfficials**: Determines who presides over the session and how they manage the proceedings
 - **SenateSession + Interjections**: Creates dynamic, interactive debates with realistic interruptions
 - **SenateSession + PoliticalManeuvering**: Incorporates backroom dealings and amendments into the formal process
+- **SenateSession + StoryCrier**: Integrates historical announcements at the beginning and end of Senate sessions
 - **PresidingOfficials + Interjections**: Officials respond to procedural objections raised during debates
 - **PoliticalManeuvering + Interjections**: Political relationships influence the likelihood and type of interjections
 

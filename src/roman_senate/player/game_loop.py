@@ -216,6 +216,10 @@ class PlayerGameLoop:
         console.print(f"\n[bold cyan]A new day begins: {new_date}[/]")
         console.print(f"[italic]({new_modern_date})[/]")
         
+        # Display historical announcements for the new day
+        console.print("\n[bold cyan]The town crier makes their morning announcements...[/]")
+        game_state.display_daily_announcements()
+        
         # Check for any special events on the new day
         new_special_events = game_state.calendar.get_special_events_for_current_day()
         if new_special_events:

@@ -84,6 +84,14 @@ Experience the complex political dynamics of the late Roman Republic, with facti
 
 > **Political Insight:** The terms "Optimates" and "Populares" weren't formal parties but political approaches. Optimates ("best men") favored senatorial aristocracy, while Populares ("favoring the people") sought popular support through reforms. Your faction choice affects your political alignment.
 
+### Historical Context Through the Town Crier
+
+Experience Rome's rich history through daily announcements from the town crier, who shares important historical events, anniversaries, and background information relevant to your gameplay session.
+
+> **Historical Note:** Town criers were an important source of news in ancient Rome, where they would make public announcements in forums and other gathering places. Our Story Crier brings this tradition to life with historically accurate announcements.
+
+[Learn more about the Story Crier feature](components/story_crier.md)
+
 ## System Requirements
 
 - Python 3.8 or higher
