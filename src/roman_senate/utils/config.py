@@ -47,8 +47,14 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 DEV_MODE = os.getenv("DEV_MODE", "False").lower() in ("true", "1", "t")  # Default to production mode for non-turbo GPT-4
 
 # GPT Model configuration
-GPT_MODEL_DEV = "gpt-4-turbo-preview"  # Faster model for development
-GPT_MODEL_PROD = "gpt-4"               # Standard model for production (non-turbo GPT-4)
+# Different model tiers for different tasks
+GPT_MODEL_DEV = "gpt-4-turbo"  # Faster model for development (GPT-4.1)
+GPT_MODEL_PROD = "gpt-4-turbo"  # Using GPT-4.1 for production as well
+
+# Model tiers for different tasks
+GPT_MODEL_TIER_SPEECH = "gpt-4-turbo"  # High-quality model for speech generation and translation
+GPT_MODEL_TIER_REASONING = "gpt-3.5-turbo"  # Fast model for decision making and task planning
+GPT_MODEL_TIER_SIMPLE = "gpt-3.5-turbo"  # Fast model for simple tasks (voting, position taking)
 
 # Default OpenAI model based on environment - use GPT_MODEL_PROD (non-turbo) by default
 DEFAULT_GPT_MODEL = GPT_MODEL_DEV if DEV_MODE else GPT_MODEL_PROD

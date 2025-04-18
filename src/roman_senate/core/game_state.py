@@ -31,6 +31,7 @@ class GameState:
         self.voting_results = []
         self.calendar = None  # Calendar will be initialized when year is set
         self.story_crier = StoryCrierAgent()  # Initialize the story crier agent
+        self.historical_events = []  # Store historical events
         
     def add_topic_result(self, topic, votes):
         """
@@ -174,6 +175,17 @@ class GameState:
         
         # Run the async function
         return loop.run_until_complete(self.generate_daily_announcements(count))
+    
+    def add_historical_event(self, historical_event):
+        """
+        Add a historical event to the game state.
+        
+        Args:
+            historical_event: The HistoricalEvent object to add
+        """
+        self.historical_events.append(historical_event)
+        # Log the addition for debugging
+        print(f"Added historical event: {historical_event.title} ({historical_event.id})")
 
 
 # Create a global instance of the game state

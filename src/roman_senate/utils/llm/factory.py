@@ -18,12 +18,13 @@ from .mock_provider import MockProvider
 
 logger = logging.getLogger(__name__)
 
-def get_llm_provider(provider_type: str = "openai", **kwargs) -> LLMProvider:
+def get_llm_provider(provider_type: str = "openai", task_type: str = None, **kwargs) -> LLMProvider:
     """
     Factory function to get the appropriate LLM provider.
     
     Args:
         provider_type: Type of provider ("openai", "ollama", or "mock")
+        task_type: Type of task ("speech", "reasoning", "simple", or None for default)
         **kwargs: Additional arguments to pass to the provider constructor
         
     Returns:
@@ -46,14 +47,31 @@ def get_llm_provider(provider_type: str = "openai", **kwargs) -> LLMProvider:
         logger.info("Test mode enabled, using MockProvider as default for tests")
         return MockProvider(**kwargs)
     
-    logger.info(f"Creating LLM provider of type: {provider_type}")
+    logger.info(f"Creating LLM provider of type: {provider_type}" + (f" for task: {task_type}" if task_type else ""))
     
     if provider_type.lower() == "openai":
         # Import here to avoid circular imports
-        from ..config import OPENAI_API_KEY
+        from ..config import (
+            OPENAI_API_KEY, GPT_MODEL_TIER_SPEECH,
+            GPT_MODEL_TIER_REASONING, GPT_MODEL_TIER_SIMPLE
+        )
+        
+        # Select model based on task type if not explicitly specified
+        if 'model_name' not in kwargs and task_type:
+            if task_type.lower() == 'speech':
+                kwargs['model_name'] = GPT_MODEL_TIER_SPEECH
+                logger.info(f"Using speech-tier model: {GPT_MODEL_TIER_SPEECH}")
+            elif task_type.lower() == 'reasoning':
+                kwargs['model_name'] = GPT_MODEL_TIER_REASONING
+                logger.info(f"Using reasoning-tier model: {GPT_MODEL_TIER_REASONING}")
+            elif task_type.lower() == 'simple':
+                kwargs['model_name'] = GPT_MODEL_TIER_SIMPLE
+                logger.info(f"Using simple-tier model: {GPT_MODEL_TIER_SIMPLE}")
+        
         # Pass the API key if it's not already in kwargs
         if 'api_key' not in kwargs and OPENAI_API_KEY:
             kwargs['api_key'] = OPENAI_API_KEY
+        
         return OpenAIProvider(**kwargs)
     elif provider_type.lower() == "ollama":
         return OllamaProvider(**kwargs)
@@ -64,11 +82,12 @@ def get_llm_provider(provider_type: str = "openai", **kwargs) -> LLMProvider:
         logger.error(error_msg)
         raise ValueError(error_msg)
 
-def get_provider(**kwargs) -> LLMProvider:
+def get_provider(task_type: str = None, **kwargs) -> LLMProvider:
     """
     Alias for get_llm_provider to maintain compatibility with code using get_provider.
     
     Args:
+        task_type: Type of task ("speech", "reasoning", "simple", or None for default)
         **kwargs: Arguments to pass to get_llm_provider
         
     Returns:
@@ -77,12 +96,13 @@ def get_provider(**kwargs) -> LLMProvider:
     # Import here to avoid circular imports
     from ..config import LLM_PROVIDER, LLM_MODEL
     
-    logger.debug("Using get_provider() alias for get_llm_provider()")
+    logger.debug(f"Using get_provider() alias for get_llm_provider()" + (f" with task_type: {task_type}" if task_type else ""))
     
     # If provider_type and model_name not explicitly provided, use config values
     if 'provider_type' not in kwargs:
         kwargs['provider_type'] = LLM_PROVIDER
-    if 'model_name' not in kwargs:
+    if 'model_name' not in kwargs and task_type is None:
         kwargs['model_name'] = LLM_MODEL
-        
-    return get_llm_provider(**kwargs)
+    
+    # Pass the task_type to get_llm_provider
+    return get_llm_provider(task_type=task_type, **kwargs)

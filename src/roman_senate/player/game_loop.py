@@ -19,6 +19,9 @@ from ..core.game_state import game_state
 from ..core import senators as senators_module
 from ..core import topic_generator, senate_session, debate, vote
 from ..core.roman_calendar import DateFormat
+from ..core.narrative_engine import NarrativeEngine
+from ..utils.llm.factory import get_llm_provider
+from ..agents.story_crier_agent import StoryCrierAgent
 from .player import Player
 from .player_manager import PlayerManager
 from .player_ui import PlayerUI
@@ -37,8 +40,11 @@ class PlayerGameLoop:
         self.senate_members = []
         self.topics = []
         self.year = -100  # Default to 100 BCE
+        self.narrative_engine = None
+        self.story_crier = None
         
-    async def start_game(self, senators_count: int = 10, topics_count: int = 3, year: int = -100):
+    async def start_game(self, senators_count: int = 10, topics_count: int = 3, year: int = -100, 
+                         enable_narrative: bool = True, event_types: List[str] = None):
         """
         Start a new player game session.
         
@@ -46,6 +52,8 @@ class PlayerGameLoop:
             senators_count: Number of NPC senators to create
             topics_count: Number of topics to debate
             year: Year to set for the session (negative for BCE)
+            enable_narrative: Whether to enable the narrative system
+            event_types: List of event types to enable (defaults to all)
         """
         # Display welcome screen
         self.player_ui.display_welcome()
@@ -57,6 +65,25 @@ class PlayerGameLoop:
         
         # Initialize Roman calendar
         game_state.initialize_calendar(year)
+        
+        # Initialize narrative system if enabled
+        if enable_narrative:
+            console.print("\n[bold cyan]Initializing narrative system...[/]")
+            llm_provider = get_llm_provider()
+            self.narrative_engine = NarrativeEngine(game_state, llm_provider)
+            self.story_crier = StoryCrierAgent(llm_provider, game_state)
+            self.story_crier.narrative_engine = self.narrative_engine
+            
+            # Generate initial narrative events
+            if event_types:
+                await self.narrative_engine.generate_targeted_narrative(event_types)
+            else:
+                await self.narrative_engine.generate_daily_narrative()
+                
+            # Display narrative announcements
+            announcements = await self.story_crier.announce_daily_events()
+            for announcement in announcements:
+                console.print(f"\n[bold yellow]CRIER:[/] {announcement}")
         
         # Character creation
         player = self.create_character()
@@ -187,7 +214,8 @@ class PlayerGameLoop:
             self.year, 
             game_state, 
             player,
-            self.player_actions
+            self.player_actions,
+            narrative_engine=self.narrative_engine
         )
         
         # Run the session with player interaction
@@ -216,9 +244,27 @@ class PlayerGameLoop:
         console.print(f"\n[bold cyan]A new day begins: {new_date}[/]")
         console.print(f"[italic]({new_modern_date})[/]")
         
-        # Display historical announcements for the new day
-        console.print("\n[bold cyan]The town crier makes their morning announcements...[/]")
-        game_state.display_daily_announcements()
+        # Generate and display narrative events for the new day if narrative system is enabled
+        if self.narrative_engine and self.story_crier:
+            console.print("\n[bold cyan]The town crier makes their morning announcements...[/]")
+            
+            # Generate new narrative events for the day
+            await self.narrative_engine.generate_daily_narrative()
+            
+            # Process the events
+            await self.narrative_engine.process_events()
+            
+            # Have the story crier announce the events
+            announcements = await self.story_crier.announce_daily_events()
+            for announcement in announcements:
+                console.print(f"\n[bold yellow]CRIER:[/] {announcement}")
+                
+            # Integrate narrative events with game state
+            self.narrative_engine.integrate_with_game_state()
+        else:
+            # Display historical announcements for the new day (fallback)
+            console.print("\n[bold cyan]The town crier makes their morning announcements...[/]")
+            game_state.display_daily_announcements()
         
         # Check for any special events on the new day
         new_special_events = game_state.calendar.get_special_events_for_current_day()
@@ -254,7 +300,8 @@ class PlayerSenateSession(senate_session.SenateSession):
         year: int, 
         game_state: Any, 
         player: Player,
-        player_actions: PlayerActions
+        player_actions: PlayerActions,
+        narrative_engine: Optional[NarrativeEngine] = None
     ):
         """
         Initialize a player-enabled senate session.
@@ -265,10 +312,12 @@ class PlayerSenateSession(senate_session.SenateSession):
             game_state: The global game state object
             player: The player character
             player_actions: The player actions handler
+            narrative_engine: Optional narrative engine for event generation
         """
         super().__init__(senators_list, year, game_state)
         self.player = player
         self.player_actions = player_actions
+        self.narrative_engine = narrative_engine
         
         # Add player to attending senators
         self.player_data = {
@@ -477,6 +526,18 @@ class PlayerSenateSession(senate_session.SenateSession):
                 border_style="cyan",
                 width=100
             ))
+            
+            # If narrative engine is available, generate relevant narrative events for this topic
+            if self.narrative_engine:
+                # Generate targeted narrative events related to this topic
+                topic_tags = [category.lower(), topic.split()[0].lower()]
+                relevant_events = await self.narrative_engine.generate_targeted_narrative(["rumor", "senator_event"], 1)
+                
+                # Display relevant narrative events as context for the debate
+                if relevant_events:
+                    console.print("\n[bold yellow]Relevant Context:[/]")
+                    for event in relevant_events:
+                        console.print(f"[italic]{event.description}[/]")
             
             # Conduct debate on this topic with player participation
             debate_summary = await self.conduct_player_debate(
@@ -729,56 +790,3 @@ class PlayerSenateSession(senate_session.SenateSession):
             
             # Check if player has relationship with this senator
             relationship = self.player.relationships.get(str(senator.get("id", "")), 50)
-            relationship_factor = relationship / 100.0  # 0 to 1
-            
-            # Adjust vote chance based on relationship and player's vote
-            if relationship > 60:  # Friendly to player
-                if player_vote["vote"] == "aye":
-                    vote_chance["for"] += 0.2 * relationship_factor
-                    vote_chance["against"] -= 0.2 * relationship_factor
-                elif player_vote["vote"] == "nay":
-                    vote_chance["for"] -= 0.2 * relationship_factor
-                    vote_chance["against"] += 0.2 * relationship_factor
-            
-            # Normalize probabilities
-            total = sum(vote_chance.values())
-            vote_chance = {k: v/total for k, v in vote_chance.items()}
-            
-            # Determine vote
-            vote_value = random.random()
-            if vote_value < vote_chance["for"]:
-                vote_counts["for"] += 1
-            elif vote_value < vote_chance["for"] + vote_chance["against"]:
-                vote_counts["against"] += 1
-            else:
-                vote_counts["abstain"] += 1
-        
-        # Determine outcome
-        total_votes = vote_counts["for"] + vote_counts["against"]
-        if total_votes > 0 and vote_counts["for"] / total_votes > 0.5:
-            outcome = "PASSED"
-        else:
-            outcome = "FAILED"
-        
-        # Display vote results
-        vote.display_vote_result({
-            "topic": topic,
-            "votes": vote_counts,
-            "outcome": outcome,
-            "player_vote": player_vote["vote"]
-        })
-        
-        # Update player influence based on vote outcome
-        if player_vote["vote"] == "aye" and outcome == "PASSED":
-            self.player.change_influence(3)
-            console.print("[green]You successfully supported the winning position. +3 Influence[/]")
-        elif player_vote["vote"] == "nay" and outcome == "FAILED":
-            self.player.change_influence(3)
-            console.print("[green]You successfully opposed the defeated measure. +3 Influence[/]")
-        
-        return {
-            "topic": topic,
-            "votes": vote_counts,
-            "outcome": outcome,
-            "player_vote": player_vote["vote"]
-        }

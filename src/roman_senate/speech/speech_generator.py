@@ -29,14 +29,32 @@ from ..utils.config import LLM_PROVIDER, LLM_MODEL
 logger = logging.getLogger(__name__)
 
 # Initialize the LLM provider based on configuration
-try:
-    llm_provider = get_llm_provider(
-        provider_type=LLM_PROVIDER,
-        model_name=LLM_MODEL
-    )
-except Exception as e:
-    logger.warning(f"Could not initialize LLM provider: {e}")
-    llm_provider = None
+# We'll create providers on-demand based on task type
+# Speech generation will use the high-quality speech tier
+# Other operations will use appropriate tiers
+def get_speech_llm_provider():
+    """Get a speech-tier LLM provider"""
+    try:
+        return get_llm_provider(provider_type=LLM_PROVIDER, task_type="speech")
+    except Exception as e:
+        logger.warning(f"Could not initialize speech LLM provider: {e}")
+        return None
+
+def get_reasoning_llm_provider():
+    """Get a reasoning-tier LLM provider"""
+    try:
+        return get_llm_provider(provider_type=LLM_PROVIDER, task_type="reasoning")
+    except Exception as e:
+        logger.warning(f"Could not initialize reasoning LLM provider: {e}")
+        return None
+
+def get_simple_llm_provider():
+    """Get a simple-tier LLM provider for basic tasks"""
+    try:
+        return get_llm_provider(provider_type=LLM_PROVIDER, task_type="simple")
+    except Exception as e:
+        logger.warning(f"Could not initialize simple LLM provider: {e}")
+        return None
 
 def generate_speech(
     senator: Dict,
@@ -153,14 +171,14 @@ def generate_speech(
     }
     
     # 12. Optionally enhance with LLM if available and requested
-    if use_llm and llm_provider is not None:
+    if use_llm:
         logger.info("Enhancing speech with LLM")
         try:
             enhanced_text = enhance_speech_with_llm(
                 speech_data["text"],
                 senator,
                 archetype_info["primary"],
-                topic, 
+                topic,
                 stance
             )
             if enhanced_text:
@@ -310,7 +328,10 @@ def enhance_speech_with_llm(speech_text: str, senator: Dict, archetype: str, top
     Returns:
         Enhanced speech text or None if enhancement failed
     """
-    if not llm_provider:
+    # Use our high-quality speech tier model
+    speech_provider = get_speech_llm_provider()
+    if not speech_provider:
+        logger.warning("No speech LLM provider available for speech enhancement")
         return None
     
     prompt = f"""
@@ -330,7 +351,7 @@ Please provide an enhanced version that:
 """
 
     try:
-        enhanced_text = llm_provider.generate_completion(
+        enhanced_text = speech_provider.generate_completion(
             prompt=prompt,
             temperature=0.7,
             max_tokens=len(speech_text.split()) + 100  # Allow some expansion

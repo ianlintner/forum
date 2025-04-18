@@ -1,8 +1,8 @@
 # Story Crier Component
 
 **Author:** Documentation Team  
-**Date:** April 15, 2025  
-**Version:** 1.0.0  
+**Date:** April 17, 2025  
+**Version:** 1.1.0  
 
 ## Table of Contents
 
@@ -10,37 +10,41 @@
 - [Components](#components)
   - [StoryCrierAgent](#storycrier-agent)
   - [Historical Events Database](#historical-events-database)
+  - [Narrative System Integration](#narrative-system-integration)
 - [Integration in Game Flow](#integration-in-game-flow)
 - [User Experience Enhancement](#user-experience-enhancement)
 - [Technical Implementation](#technical-implementation)
   - [Event Selection Algorithm](#event-selection-algorithm)
   - [Display Formatting](#display-formatting)
+  - [Narrative Content Generation](#narrative-content-generation)
 - [Extending the Feature](#extending-the-feature)
   - [Adding New Historical Events](#adding-new-historical-events)
   - [Customizing Announcements](#customizing-announcements)
+  - [Enhancing Narrative Integration](#enhancing-narrative-integration)
 
 ## Overview
 
-The Story Crier feature brings the Roman world to life by announcing relevant historical events at the start of each day in the simulation. Functioning like a Roman town crier, this feature provides players with historical context, commemorates anniversaries of significant events, and creates a more immersive gameplay experience that connects the Senate proceedings to the broader historical timeline.
+The Story Crier feature brings the Roman world to life by announcing relevant historical events and AI-generated narrative content at the start of each day in the simulation. Functioning like a Roman town crier, this feature provides players with historical context, commemorates anniversaries of significant events, and creates a more immersive gameplay experience that connects the Senate proceedings to the broader historical timeline and daily life in Rome.
 
 ## Components
 
-The Story Crier feature consists of two main components that work together to generate contextually appropriate historical announcements.
+The Story Crier feature consists of several components that work together to generate contextually appropriate historical and narrative announcements.
 
 ### StoryCrier Agent
 
-The `StoryCrierAgent` class acts as a Roman town crier who announces historical events to the Senate. Key features include:
+The `StoryCrierAgent` class acts as a Roman town crier who announces historical events and narrative content to the Senate. Key features include:
 
 - Retrieves relevant historical events based on the current simulation date
+- Generates dynamic narrative content using the NarrativeEngine
 - Formats announcements with distinctive styling
 - Caches announcements for performance optimization
-- Supports optional LLM integration for enhanced announcement generation
+- Supports LLM integration for enhanced announcement generation
 
 The agent displays announcements in stylized panels with a distinctive Roman-inspired font for the header, creating an immersive historical atmosphere at the start of each gameplay day.
 
 ### Historical Events Database
 
-The `HistoricalEventsDatabase` provides the content for the Story Crier's announcements. This comprehensive database includes:
+The `HistoricalEventsDatabase` provides historical content for the Story Crier's announcements. This comprehensive database includes:
 
 - Categorized historical events spanning Roman history
 - Multiple event categories (political, military, religious, cultural, etc.)
@@ -50,11 +54,27 @@ The `HistoricalEventsDatabase` provides the content for the Story Crier's announ
 
 The database contains both major historical turning points (like Caesar's assassination) and minor background events that add flavor to the simulation.
 
+### Narrative System Integration
+
+The Story Crier now integrates with the Narrative System to generate dynamic, contextually relevant content:
+
+- Uses the NarrativeEngine to generate daily events and rumors
+- Provides narrative content that responds to the current game state
+- Creates a more dynamic and responsive world that evolves with gameplay
+- Ensures narrative consistency with previous events and game state
+
+This integration allows the Story Crier to supplement historical events with AI-generated narrative content that reflects the current state of the simulation.
+
+```python
+# Example: Generating narrative content
+narrative_events = story_crier.generate_narrative_content(count=3)
+```
+
 ## Integration in Game Flow
 
 The Story Crier feature is integrated into the game flow at two key points:
 
-1. **Start of Game Session**: When a new game session begins, any relevant historical events for the starting date are announced.
+1. **Start of Game Session**: When a new game session begins, any relevant historical events and narrative content for the starting date are announced.
 
 2. **Between Senate Sessions**: After a Senate session concludes and the game advances to the next day, the Story Crier makes announcements for the new day.
 
@@ -65,24 +85,39 @@ sequenceDiagram
     participant Calendar
     participant StoryCrier
     participant EventsDB
+    participant NarrativeEngine
     
     Player->>GameLoop: Start Game Session
     GameLoop->>Calendar: Initialize Date
     GameLoop->>StoryCrier: Request Announcements
-    StoryCrier->>EventsDB: Query for Current Date
-    EventsDB-->>StoryCrier: Return Relevant Events
+    
+    alt Narrative System Available
+        StoryCrier->>NarrativeEngine: Generate Narrative Content
+        NarrativeEngine-->>StoryCrier: Return Narrative Events
+    else Fallback to Historical Events
+        StoryCrier->>EventsDB: Query for Current Date
+        EventsDB-->>StoryCrier: Return Relevant Events
+    end
+    
     StoryCrier-->>GameLoop: Display Announcements
     
     GameLoop->>GameLoop: Run Senate Session
     GameLoop->>Calendar: Advance Day
     GameLoop->>StoryCrier: Request Announcements
-    StoryCrier->>EventsDB: Query for New Date
-    EventsDB-->>StoryCrier: Return Relevant Events
+    
+    alt Narrative System Available
+        StoryCrier->>NarrativeEngine: Generate Narrative Content
+        NarrativeEngine-->>StoryCrier: Return Narrative Events
+    else Fallback to Historical Events
+        StoryCrier->>EventsDB: Query for Current Date
+        EventsDB-->>StoryCrier: Return Relevant Events
+    end
+    
     StoryCrier-->>GameLoop: Display Announcements
     GameLoop-->>Player: Continue Gameplay
 ```
 
-This integration ensures players receive contextual historical information as they progress through the game, creating a more coherent narrative experience.
+This integration ensures players receive contextual historical information and dynamic narrative content as they progress through the game, creating a more coherent and immersive narrative experience.
 
 ## User Experience Enhancement
 
@@ -95,6 +130,8 @@ The Story Crier feature enhances the user experience in several ways:
 3. **Narrative Context**: Providing background that helps players understand the political climate of their current gameplay session
 
 4. **Temporal Awareness**: Giving players a sense of time passing and historical progression as they advance through game days
+
+5. **Dynamic World**: Creating a sense of a living, evolving world through AI-generated narrative content
 
 ### Example Announcements
 
@@ -110,12 +147,16 @@ The Story Crier feature enhances the user experience in several ways:
 │                                                                                      │
 └──────────────────────────────────────────────────────────────────────────────────────┘
 
-┌────────────────────────── Famous Gladiatorial Games of Crassus ──────────────────────────┐
-│                                                                                           │
-│ In the year 70 BCE, Marcus Licinius Crassus sponsored elaborate gladiatorial games to     │
-│ gain public favor, featuring over 100 pairs of fighters.                                  │
-│                                                                                           │
-└───────────────────────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────── Market Price Fluctuations ──────────────────────────┐
+│                                                                                │
+│ The grain markets in Rome are abuzz today as prices have risen slightly        │
+│ following reports of delayed shipments from Sicily. Merchants at the Forum     │
+│ Boarium are charging an extra denarius per modius, causing minor grumbling     │
+│ among the plebeians. Marcus Licinius, a prominent grain merchant, assures      │
+│ customers that new shipments are expected within days and prices should        │
+│ stabilize soon.                                                                │
+│                                                                                │
+└────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Technical Implementation
@@ -142,6 +183,31 @@ Announcements are displayed with:
 - Clear title and formatted text structure
 - Visual separation between individual announcements
 - Consistent placement at key transition moments in gameplay
+
+### Narrative Content Generation
+
+The Story Crier now leverages the Narrative System to generate dynamic content:
+
+1. **Daily News Generation**: Creates daily events about life in Rome using the NarrativeEngine
+   ```python
+   daily_news = story_crier.generate_daily_news()
+   ```
+
+2. **Rumor Generation**: Produces rumors and gossip circulating in Rome
+   ```python
+   rumors = story_crier.generate_rumors()
+   ```
+
+3. **Narrative Integration**: Combines historical events with AI-generated narrative content
+   ```python
+   narrative_events = story_crier.generate_narrative_content()
+   ```
+
+4. **Fallback Mechanism**: Uses historical events when narrative generation is unavailable
+   ```python
+   if not narrative_events:
+       announcements = get_announcements_for_current_date(...)
+   ```
 
 ## Extending the Feature
 
@@ -185,3 +251,35 @@ For more complex customizations involving new LLM providers:
 1. Initialize the `StoryCrierAgent` with a custom LLM provider
 2. Implement extended announcement generation logic that utilizes the LLM
 3. Add new event metadata to support richer LLM-based text generation
+
+### Enhancing Narrative Integration
+
+To enhance the integration with the Narrative System:
+
+1. Modify the `generate_narrative_content` method to use different event types
+   ```python
+   def generate_narrative_content(self, event_types=None, count=3):
+       if event_types is None:
+           event_types = ["daily_event", "rumor"]
+       return self.narrative_engine.generate_targeted_narrative(event_types, count)
+   ```
+
+2. Add custom event generators to the NarrativeEngine
+   ```python
+   from custom_generators import CustomEventGenerator
+   narrative_engine.event_manager.register_generator(
+       "custom_events", 
+       CustomEventGenerator(llm_provider)
+   )
+   ```
+
+3. Create specialized announcement formats for different event types
+   ```python
+   def display_announcements(self, announcements):
+       for announcement in announcements:
+           if announcement.get("type") == "rumor":
+               # Use special styling for rumors
+               self._display_rumor(announcement)
+           else:
+               # Use standard styling
+               self._display_standard(announcement)

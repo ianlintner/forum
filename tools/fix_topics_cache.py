@@ -14,14 +14,14 @@ import json
 import sys
 from pathlib import Path
 
-# Add the project root to the path to allow importing from other modules
-project_root = Path(__file__).parents[2]  # src directory
-sys.path.insert(0, str(project_root))
+# Add the src directory to the path to allow importing from other modules
+project_root = Path(__file__).parents[1]  # project root directory
+sys.path.insert(0, str(project_root / "src"))
 
 from roman_senate.core.topic_generator import clean_topic_string, clean_topics_dict
 
 # Cache file path
-CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "cache")
+CACHE_DIR = os.path.join(project_root, "data", "cache")
 TOPICS_CACHE_FILE = os.path.join(CACHE_DIR, "topics_cache.json")
 
 

@@ -190,8 +190,8 @@ async def test_augmentatio_orationis_llm():
     mock_provider = MagicMock()
     mock_provider.generate_completion.return_value = "Enhanced speech with better rhetoric."
     
-    # Patch the global llm_provider
-    with patch('roman_senate.speech.speech_generator.llm_provider', mock_provider):
+    # Patch the get_speech_llm_provider function to return our mock provider
+    with patch('roman_senate.speech.speech_generator.get_speech_llm_provider', return_value=mock_provider):
         # Test enhancing a speech
         original_speech = "This is a basic speech about the aqueduct."
         senator = {"name": "Cicero", "faction": "Optimates"}

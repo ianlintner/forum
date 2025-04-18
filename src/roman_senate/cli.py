@@ -13,11 +13,59 @@ import os
 import sys
 import typer
 import asyncio
+import importlib
 from typing import Optional, List
 from rich.console import Console
 from rich.table import Table
-from .utils.config import LLM_PROVIDER, LLM_MODEL
-from .core.persistence import save_game, load_game, get_save_files, auto_save
+
+# Fix import issues when running the script directly
+# Set up path correctly first before any other imports
+script_dir = os.path.dirname(os.path.abspath(__file__))
+base_dir = os.path.dirname(os.path.dirname(script_dir))
+if base_dir not in sys.path:
+    sys.path.insert(0, base_dir)
+
+# Determine if running as a script or as a module
+is_running_directly = __name__ == "__main__"
+
+# If running directly, set package name to enable relative imports
+if is_running_directly:
+    # When running as script, we need to set __package__ manually
+    package_name = "src.roman_senate"
+    __package__ = package_name
+
+# Global variables to be set after imports
+LLM_PROVIDER = None
+LLM_MODEL = None
+save_game = None
+load_game = None
+get_save_files = None
+auto_save = None
+
+# Initialize the necessary modules
+def init_imports():
+    global LLM_PROVIDER, LLM_MODEL, save_game, load_game, get_save_files, auto_save
+    
+    # Use dynamic import to handle both direct execution and module import
+    if is_running_directly:
+        # If running as a script directly (./cli.py), use absolute imports
+        config_module = importlib.import_module("src.roman_senate.utils.config")
+        persistence_module = importlib.import_module("src.roman_senate.core.persistence")
+    else:
+        # If running as a module (python -m src.roman_senate.cli), use relative imports
+        config_module = importlib.import_module(".utils.config", package=__package__)
+        persistence_module = importlib.import_module(".core.persistence", package=__package__)
+
+    # Extract the needed imports from the modules
+    LLM_PROVIDER = config_module.LLM_PROVIDER
+    LLM_MODEL = config_module.LLM_MODEL
+    save_game = persistence_module.save_game
+    load_game = persistence_module.load_game
+    get_save_files = persistence_module.get_save_files
+    auto_save = persistence_module.auto_save
+
+# Initialize imports
+init_imports()
 
 app = typer.Typer(help="Roman Senate AI Simulation Game")
 console = Console()
@@ -89,9 +137,14 @@ async def play_async(senators: int = 10, debate_rounds: int = 3, topics: int = 3
         year: Year in Roman history (negative for BCE)
     """
     # We're importing these inside the function to avoid circular imports
-    from .core.game_state import game_state
-    from .core import senators as senators_module
-    from .core import topic_generator, senate_session, debate, vote
+    if is_running_directly:
+        from src.roman_senate.core.game_state import game_state
+        from src.roman_senate.core import senators as senators_module
+        from src.roman_senate.core import topic_generator, senate_session, debate, vote
+    else:
+        from .core.game_state import game_state
+        from .core import senators as senators_module
+        from .core import topic_generator, senate_session, debate, vote
     
     console.print(f"\n[bold green]✓[/] LLM integration is working. Using model: [bold cyan]{LLM_MODEL}[/]")
     
@@ -166,7 +219,10 @@ def play_as_senator(
     """Start a new game as a Roman Senator, allowing you to participate in debates and votes."""
     try:
         # Import player game loop here to avoid circular imports
-        from .player.game_loop import PlayerGameLoop
+        if is_running_directly:
+            from src.roman_senate.player.game_loop import PlayerGameLoop
+        else:
+            from .player.game_loop import PlayerGameLoop
         
         # Convert parameters to integers (typer does this automatically, but keeping for safety)
         senators_int = int(senators)
@@ -245,7 +301,10 @@ async def run_simulation_async(senators: int = 10, debate_rounds: int = 3, topic
         model: LLM model to use (defaults to config)
     """
     # Import the unified simulation here to avoid circular imports
-    from .agent_simulation import run_simulation
+    if is_running_directly:
+        from src.roman_senate.agent_simulation import run_simulation
+    else:
+        from .agent_simulation import run_simulation
     
     # Use a deterministic seed if in test/non-interactive mode for reproducibility
     if os.environ.get('ROMAN_SENATE_TEST_MODE') == 'true':
@@ -305,7 +364,11 @@ def save_command(
     """Save the current game state to a file."""
     try:
         # Check if there's an active game state to save
-        from .core.game_state import game_state
+        if is_running_directly:
+            from src.roman_senate.core.game_state import game_state
+        else:
+            from .core.game_state import game_state
+            
         if not game_state.senators:
             console.print("[bold red]No active game to save.[/] Start a game first with 'senate play' or 'senate play-as-senator'.")
             return
@@ -379,4 +442,5 @@ def list_saves_command():
 
 
 if __name__ == "__main__":
+    # This ensures the script can be run directly with python cli.py
     app()

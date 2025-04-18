@@ -22,6 +22,7 @@ The Roman Senate Game is an immersive political simulation set in the late Roman
 - **Historical Authenticity**: Set in the late Republic era with historically accurate debate topics and context
 - **Sophisticated Speech Generation**: Experience speeches with classical structure, rhetorical devices, and Latin flourishes
 - **Faction Politics**: Navigate the complex dynamics between Optimates and Populares factions
+- **AI-Generated Narrative System**: Experience a living, evolving Rome with dynamic daily events, rumors, and interactions
 - **Three Game Modes**:
   - **Simulation Mode**: Watch autonomous senator agents with memory, dynamic relationships, and advanced decision-making
   - **Traditional Simulation Mode**: Watch basic AI senators debate and vote (legacy mode)
@@ -202,7 +203,12 @@ The game features:
    - Classical speech structure
    - Rhetorical devices
    - Latin flourishes
-3. **Player Interaction System**: Allows users to participate as senators
+3. **Narrative System**:
+   - AI-generated daily events and rumors
+   - Narrative consistency processing
+   - Relationship tracking between entities
+   - Integration with game state
+4. **Player Interaction System**: Allows users to participate as senators
 
 ## Example Gameplay Scenarios
 
@@ -222,17 +228,49 @@ The Senate must decide whether to allocate additional funds for a military campa
 
 **Interactive Mode**: You decide whether to support or oppose the funding. If you've built strong relationships with military-aligned senators, your speech might sway more votes. Your choice of rhetoric will affect how persuasive your argument is.
 
+### Scenario 3: Narrative Events and Rumors
+
+Experience how the narrative system enriches the simulation with daily events and rumors:
+
+**Simulation Mode**: As the Senate debates important issues, you'll receive updates about events happening in Rome - from market fluctuations to religious ceremonies. You'll also hear rumors that might influence senators' opinions on current topics.
+
+**Interactive Mode**: Use information from daily events and rumors to inform your speeches and political strategy. Reference recent events to make your arguments more persuasive or use rumors to your advantage.
+
+## Demo Scripts
+
+### Narrative System Demo
+
+Try the narrative system demo to experience the AI-generated storytelling:
+
+```bash
+python demo_narrative.py
+```
+
+This demo showcases:
+- Dynamic generation of daily events and rumors
+- Narrative consistency processing
+- Relationship tracking between entities
+- Rich text output for better readability
+
+Run `python demo_narrative.py --help` for additional options.
+
 ## Further Documentation
 
 For more detailed information about the game components and architecture, see the documentation in the `docs` folder:
+
+> **New: Improved CLI Usage**
+> We've added new convenient ways to run the Roman Senate CLI:
+> - Use the `run_senate.py` script: `python run_senate.py simulate`
+> - Install as a command: `python setup_cli.py` (then use `senate` command)
+> - See [CLI_USAGE.md](CLI_USAGE.md) for detailed instructions
 - [User Guide](docs/user_guide.md)
 - [Speech Generation Framework](docs/speech_generation.md)
 - [Interactive Mode Guide](docs/interactive_mode.md)
 - [System Architecture](docs/architecture.md)
 - [Agent-Driven Simulation Guide](docs/agent_simulation.md)
 - [Agent Architecture Documentation](docs/agent_architecture.md)
+- [Narrative System Documentation](docs/components/narrative_system.md)
 - [Roman Senate Traditions](docs/roman_senate_traditions.md)
-- [LLM Provider Configuration](docs/llm_providers.md)
 - [LLM Provider Configuration](docs/llm_providers.md)
 
 ## License

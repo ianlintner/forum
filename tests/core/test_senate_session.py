@@ -33,6 +33,8 @@ def test_creatio_senatus():
         
         # Create session
         mock_game_state = MagicMock()  # Create a mock game_state object
+        # Mock the calendar.can_hold_senate_session method to return a tuple (bool, str)
+        mock_game_state.calendar.can_hold_senate_session.return_value = (True, "Dies Fasti - Legal business is permitted")
         session = SenateSession(
             senators_list=mock_gen_senators.return_value,
             year=-50,
@@ -73,6 +75,8 @@ async def test_preparatio_sessionis():
         
         # Create session
         mock_game_state = MagicMock()
+        # Mock the calendar.can_hold_senate_session method to return a tuple
+        mock_game_state.calendar.can_hold_senate_session.return_value = (True, "Dies Fasti - Legal business is permitted")
         session = SenateSession(
             senators_list=mock_gen_senators.return_value,
             year=-50,
@@ -105,6 +109,8 @@ def test_selectio_oratoris():
         
         # Create session
         mock_game_state = MagicMock()
+        # Mock the calendar.can_hold_senate_session method to return a tuple
+        mock_game_state.calendar.can_hold_senate_session.return_value = (True, "Dies Fasti - Legal business is permitted")
         session = SenateSession(
             senators_list=mock_gen_senators.return_value,
             year=-50,
@@ -164,6 +170,8 @@ def test_initium_controversiae():
         
         # Create session
         mock_game_state = MagicMock()
+        # Mock the calendar.can_hold_senate_session method to return a tuple
+        mock_game_state.calendar.can_hold_senate_session.return_value = (True, "Dies Fasti - Legal business is permitted")
         session = SenateSession(
             senators_list=mock_gen_senators.return_value,
             year=-50,
@@ -222,6 +230,8 @@ async def test_generatio_orationis_senatoris():
         
         # Create session
         mock_game_state = MagicMock()
+        # Mock the calendar.can_hold_senate_session method to return a tuple
+        mock_game_state.calendar.can_hold_senate_session.return_value = (True, "Dies Fasti - Legal business is permitted")
         session = SenateSession(
             senators_list=mock_gen_senators.return_value,
             year=-50,
@@ -281,6 +291,8 @@ def test_processum_votorum():
         
         # Create session
         mock_game_state = MagicMock()
+        # Mock the calendar.can_hold_senate_session method to return a tuple
+        mock_game_state.calendar.can_hold_senate_session.return_value = (True, "Dies Fasti - Legal business is permitted")
         session = SenateSession(
             senators_list=mock_gen_senators.return_value,
             year=-50,
@@ -326,6 +338,8 @@ def test_completio_sessionis():
         
         # Create session
         mock_game_state = MagicMock()
+        # Mock the calendar.can_hold_senate_session method to return a tuple
+        mock_game_state.calendar.can_hold_senate_session.return_value = (True, "Dies Fasti - Legal business is permitted")
         session = SenateSession(
             senators_list=mock_gen_senators.return_value,
             year=-50,
@@ -377,6 +391,8 @@ def test_transitio_ad_topicum_novum():
         
         # Create session
         mock_game_state = MagicMock()
+        # Mock the calendar.can_hold_senate_session method to return a tuple
+        mock_game_state.calendar.can_hold_senate_session.return_value = (True, "Dies Fasti - Legal business is permitted")
         session = SenateSession(
             senators_list=mock_gen_senators.return_value,
             year=-50,

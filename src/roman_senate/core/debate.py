@@ -210,14 +210,21 @@ async def generate_latin_from_english(english_text: str, llm) -> str:
     
     Args:
         english_text: The English text to translate to Latin
-        llm: The LLM provider instance to use
+        llm: The LLM provider instance to use (fallback if speech provider not available)
         
     Returns:
         Classical Latin translation of the English text
     """
     if not english_text:
         return "Oratio latina non data est."
-        
+    
+    # Import here to avoid circular imports
+    from ..speech.speech_generator import get_speech_llm_provider
+    
+    # Try to get the speech-tier provider for high-quality translations
+    speech_provider = get_speech_llm_provider()
+    translation_provider = speech_provider if speech_provider else llm
+    
     try:
         prompt = f"""
         You are a Classical Latin expert specialized in translating English to authentic Classical Latin (not Medieval or Church Latin).
@@ -239,8 +246,8 @@ async def generate_latin_from_english(english_text: str, llm) -> str:
         Return ONLY the Latin translation, with no additional commentary or explanations.
         """
         
-        # Request Latin translation from LLM
-        latin_text = await llm.generate_text(
+        # Request Latin translation from speech-tier LLM (or fallback)
+        latin_text = await translation_provider.generate_text(
             prompt=prompt,
             temperature=0.7,
             max_tokens=len(english_text.split()) * 2  # Latin might need more tokens

@@ -202,22 +202,22 @@ class SenateEnvironment:
             for agent in self.agents:
                 vote, reasoning = await agent.vote(topic_text, context)
                 
-                # Map the agent's vote to "for", "against", or "abstain"
-                # The agent system only returns "for" or "against", but we'll add
-                # a small chance of abstention for realism (unless in testing mode)
-                if not testing and random.random() < 0.05:  # 5% chance to abstain
-                    final_vote = "abstain"
-                else:
-                    final_vote = vote
-                
                 # Map the vote values from "support"/"oppose" to "for"/"against"
                 vote_mapping = {
                     "support": "for",
                     "oppose": "against"
                 }
                 
-                # Update vote counts with mapped value
-                mapped_vote = vote_mapping.get(final_vote, final_vote)
+                # Get the properly mapped vote first
+                mapped_vote = vote_mapping.get(vote, vote)
+                
+                # Then apply random abstention if needed (unless in testing mode)
+                if not testing and random.random() < 0.05:  # 5% chance to abstain
+                    final_vote = "abstain"
+                    # Use abstain directly as the mapped vote
+                    mapped_vote = "abstain"
+                else:
+                    final_vote = vote
                 votes[mapped_vote] += 1
                 
                 # Add to voting record
