@@ -41,6 +41,8 @@ if is_running_directly:
 
 # Global variables to be set after imports
 LLM_PROVIDER = None
+# Flag to determine which architecture to use (legacy or framework)
+USE_FRAMEWORK = False
 LLM_MODEL = None
 save_game = None
 load_game = None
@@ -86,12 +88,19 @@ logger = None  # Will be initialized in main()
 def main(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Increase output verbosity"),
     log_level: str = typer.Option(None, "--log-level", help="Set logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)"),
-    log_file: str = typer.Option(None, "--log-file", help="Custom log file path")
+    log_file: str = typer.Option(None, "--log-file", help="Custom log file path"),
+    use_framework: bool = typer.Option(False, "--use-framework", help="Use the new Agentic Game Framework architecture")
 ):
     """
     Roman Senate AI Simulation Game - A political simulation set in ancient Rome
+    
+    This application supports both the legacy architecture and the new Agentic Game Framework.
+    Use the --use-framework flag to enable the new architecture.
     """
-    global logger
+    global logger, USE_FRAMEWORK
+    
+    # Set the global framework flag
+    USE_FRAMEWORK = use_framework
     
     # Set up logging early
     logger = setup_logging(log_level=log_level, log_file=log_file, verbose=verbose)
@@ -99,16 +108,19 @@ def main(
     # Log application startup
     logger.info("Roman Senate AI Game starting")
     logger.info(f"Using LLM Provider: {LLM_PROVIDER} (Model: {LLM_MODEL})")
+    logger.info(f"Architecture mode: {'Agentic Framework' if USE_FRAMEWORK else 'Legacy'}")
     
     # Display version info and environment
     console.print("[bold cyan]Roman Senate AI Game[/]")
     console.print(f"[dim]Using LLM Provider: {LLM_PROVIDER} (Model: {LLM_MODEL})[/]")
+    if USE_FRAMEWORK:
+        console.print("[bold green]Using Agentic Game Framework architecture[/]")
     
     # Ensure correct working directory
     ensure_correct_path()
     
     # Log command line arguments
-    logger.debug(f"Command line arguments: verbose={verbose}, log_level={log_level}, log_file={log_file}")
+    logger.debug(f"Command line arguments: verbose={verbose}, log_level={log_level}, log_file={log_file}, use_framework={use_framework}")
 
 def ensure_correct_path():
     """Ensure the script runs from the correct directory."""
@@ -133,11 +145,17 @@ def play(
     debate_rounds: int = typer.Option(3, help="Number of debate rounds per topic"),
     topics: int = typer.Option(3, help="Number of topics to debate"),
     year: int = typer.Option(-100, help="Year in Roman history (negative for BCE)"),
+    provider: str = typer.Option(None, help="LLM provider to use (defaults to config)"),
+    model: str = typer.Option(None, help="LLM model to use (defaults to config)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Increase output verbosity"),
     log_level: str = typer.Option(None, "--log-level", help="Set logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)"),
     log_file: str = typer.Option(None, "--log-file", help="Custom log file path")
 ):
-    """Start a new game session of the Roman Senate simulation."""
+    """
+    Start a new game session of the Roman Senate simulation.
+    
+    Supports both legacy and Agentic Game Framework architectures via the global --use-framework flag.
+    """
     try:
         # Convert parameters to integers (typer does this automatically, but keeping for safety)
         senators_int = int(senators)
@@ -146,10 +164,71 @@ def play(
         year_int = int(year)
         
         # Log play command execution
-        logger.info(f"Starting play mode: senators={senators_int}, debate_rounds={debate_rounds_int}, topics={topics_int}, year={year_int}")
+        architecture_mode = "Agentic Framework" if USE_FRAMEWORK else "Legacy"
+        logger.info(f"Starting play mode ({architecture_mode}): senators={senators_int}, debate_rounds={debate_rounds_int}, topics={topics_int}, year={year_int}")
         
-        # Run the async play function with asyncio.run
-        asyncio.run(play_async(senators_int, debate_rounds_int, topics_int, year_int))
+        if USE_FRAMEWORK:
+            # Import the framework simulation components
+            try:
+                from src.roman_senate_framework.domains.senate.simulation import run_simulation
+                
+                # Select LLM provider
+                llm_provider = None
+                if provider:
+                    if provider.lower() == "mock":
+                        from src.roman_senate.utils.llm.mock_provider import MockProvider
+                        llm_provider = MockProvider()
+                    elif provider.lower() == "openai":
+                        from src.roman_senate.utils.llm.openai_provider import OpenAIProvider
+                        llm_provider = OpenAIProvider(model=model or "gpt-3.5-turbo")
+                    elif provider.lower() == "ollama":
+                        from src.roman_senate.utils.llm.ollama_provider import OllamaProvider
+                        llm_provider = OllamaProvider(model=model or "llama2")
+                
+                # Create default topics
+                debate_topics = [
+                    "The expansion of Roman citizenship to Italian allies",
+                    "Funding for new aqueducts in Rome",
+                    "Military reforms proposed by the consul",
+                    "Land redistribution to veterans",
+                    "Grain subsidies for the urban poor"
+                ]
+                
+                # Use only the requested number of topics
+                selected_topics = debate_topics[:topics_int]
+                
+                # Configuration
+                config = {
+                    "year": year_int,
+                    "topics": selected_topics,
+                    "factions": ["Optimates", "Populares", "Neutral"],
+                    "debate": {
+                        "max_rounds": debate_rounds_int,
+                        "speech_time_limit": 120,
+                        "interjection_limit": 2,
+                        "reaction_limit": 5
+                    }
+                }
+                
+                console.print("[bold green]Using Agentic Game Framework architecture[/]")
+                
+                # Run the framework simulation
+                asyncio.run(run_simulation(
+                    num_senators=senators_int,
+                    topics=selected_topics,
+                    rounds_per_topic=debate_rounds_int,
+                    llm_provider=llm_provider,
+                    config=config
+                ))
+            except ImportError as e:
+                logger.error(f"Failed to import framework components: {e}")
+                console.print("[bold red]Failed to load framework components. Falling back to legacy mode.[/]")
+                # Fall back to legacy mode
+                asyncio.run(play_async(senators_int, debate_rounds_int, topics_int, year_int))
+        else:
+            # Run the legacy async play function
+            console.print("[dim]Using legacy architecture[/]")
+            asyncio.run(play_async(senators_int, debate_rounds_int, topics_int, year_int))
     except Exception as e:
         error_msg = f"Fatal game error: {str(e)}"
         logger.error(error_msg)
@@ -264,29 +343,94 @@ def play_as_senator(
     senators: int = typer.Option(9, help="Number of NPC senators to simulate (plus you)"),
     topics: int = typer.Option(3, help="Number of topics to debate"),
     year: int = typer.Option(-100, help="Year in Roman history (negative for BCE)"),
+    provider: str = typer.Option(None, help="LLM provider to use (defaults to config)"),
+    model: str = typer.Option(None, help="LLM model to use (defaults to config)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Increase output verbosity"),
     log_level: str = typer.Option(None, "--log-level", help="Set logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)"),
     log_file: str = typer.Option(None, "--log-file", help="Custom log file path")
 ):
-    """Start a new game as a Roman Senator, allowing you to participate in debates and votes."""
+    """
+    Start a new game as a Roman Senator, allowing you to participate in debates and votes.
+    
+    Supports both legacy and Agentic Game Framework architectures via the global --use-framework flag.
+    """
     try:
-        # Import player game loop here to avoid circular imports
-        if is_running_directly:
-            from src.roman_senate.player.game_loop import PlayerGameLoop
-        else:
-            from .player.game_loop import PlayerGameLoop
-        
         # Convert parameters to integers (typer does this automatically, but keeping for safety)
         senators_int = int(senators)
         topics_int = int(topics)
         year_int = int(year)
         
         # Log player game start
-        logger.info(f"Starting player mode: senators={senators_int}, topics={topics_int}, year={year_int}")
+        architecture_mode = "Agentic Framework" if USE_FRAMEWORK else "Legacy"
+        logger.info(f"Starting player mode ({architecture_mode}): senators={senators_int}, topics={topics_int}, year={year_int}")
         
-        # Create and start the player game loop
-        player_loop = PlayerGameLoop()
-        asyncio.run(player_loop.start_game(senators_int, topics_int, year_int))
+        if USE_FRAMEWORK:
+            try:
+                # Import the framework player module
+                from src.roman_senate_framework.domains.senate.player.interactive_mode import InteractivePlayerSession
+                
+                # Select LLM provider
+                llm_provider = None
+                if provider:
+                    if provider.lower() == "mock":
+                        from src.roman_senate.utils.llm.mock_provider import MockProvider
+                        llm_provider = MockProvider()
+                    elif provider.lower() == "openai":
+                        from src.roman_senate.utils.llm.openai_provider import OpenAIProvider
+                        llm_provider = OpenAIProvider(model=model or "gpt-3.5-turbo")
+                    elif provider.lower() == "ollama":
+                        from src.roman_senate.utils.llm.ollama_provider import OllamaProvider
+                        llm_provider = OllamaProvider(model=model or "llama2")
+                
+                # Create default topics
+                debate_topics = [
+                    "The expansion of Roman citizenship to Italian allies",
+                    "Funding for new aqueducts in Rome",
+                    "Military reforms proposed by the consul",
+                    "Land redistribution to veterans",
+                    "Grain subsidies for the urban poor"
+                ]
+                
+                # Use only the requested number of topics
+                selected_topics = debate_topics[:topics_int]
+                
+                console.print("[bold green]Using Agentic Game Framework architecture for interactive mode[/]")
+                
+                # Set up player session
+                player_session = InteractivePlayerSession(
+                    num_senators=senators_int,
+                    topics=selected_topics,
+                    year=year_int,
+                    llm_provider=llm_provider
+                )
+                
+                # Run the interactive player session
+                asyncio.run(player_session.start())
+                
+            except ImportError as e:
+                logger.error(f"Failed to import framework player components: {e}")
+                console.print("[bold red]Failed to load framework player components. Falling back to legacy mode.[/]")
+                # Fall back to legacy mode
+                if is_running_directly:
+                    from src.roman_senate.player.game_loop import PlayerGameLoop
+                else:
+                    from .player.game_loop import PlayerGameLoop
+                
+                player_loop = PlayerGameLoop()
+                asyncio.run(player_loop.start_game(senators_int, topics_int, year_int))
+        else:
+            # Use the legacy player game loop
+            console.print("[dim]Using legacy architecture for interactive mode[/]")
+            
+            # Import player game loop here to avoid circular imports
+            if is_running_directly:
+                from src.roman_senate.player.game_loop import PlayerGameLoop
+            else:
+                from .player.game_loop import PlayerGameLoop
+            
+            # Create and start the player game loop
+            player_loop = PlayerGameLoop()
+            asyncio.run(player_loop.start_game(senators_int, topics_int, year_int))
         
     except Exception as e:
         error_msg = f"Fatal game error: {str(e)}"
@@ -315,7 +459,7 @@ def simulate(
     non_interactive: bool = typer.Option(False, help="Run in non-interactive mode (for CI/CD testing)"),
     provider: str = typer.Option(None, help="LLM provider to use (defaults to config)"),
     model: str = typer.Option(None, help="LLM model to use (defaults to config, for OpenAI use 'gpt-4' for non-turbo)"),
-    use_framework: bool = typer.Option(False, help="Use the new Agentic Game Framework"),
+    use_framework: bool = typer.Option(None, help="Use the new Agentic Game Framework (overrides global setting)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Increase output verbosity"),
     log_level: str = typer.Option(None, "--log-level", help="Set logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)"),
     log_file: str = typer.Option(None, "--log-file", help="Custom log file path")
@@ -340,15 +484,22 @@ def simulate(
         year_int = int(year)
         # Run the unified simulation
         console.print("[dim]Starting Roman Senate simulation...[/]")
-        logger.info(f"Starting simulation: senators={senators_int}, debate_rounds={debate_rounds_int}, topics={topics_int}, year={year_int}, provider={provider}, model={model}, use_framework={use_framework}")
         
-        if use_framework:
+        # Determine which architecture to use:
+        # - Command parameter overrides global setting if provided (not None)
+        # - Otherwise use global setting
+        should_use_framework = use_framework if use_framework is not None else USE_FRAMEWORK
+        
+        logger.info(f"Starting simulation: senators={senators_int}, debate_rounds={debate_rounds_int}, topics={topics_int}, year={year_int}, provider={provider}, model={model}, use_framework={should_use_framework}")
+        
+        if should_use_framework:
             # Run simulation with the new framework
             console.print("[bold cyan]Using new Agentic Game Framework[/]")
             logger.info("Using new Agentic Game Framework for simulation")
             asyncio.run(run_framework_simulation(senators_int, debate_rounds_int, topics_int, year_int, provider, model))
         else:
             # Run simulation with the traditional system
+            console.print("[dim]Using legacy architecture[/]")
             asyncio.run(run_simulation_async(senators_int, debate_rounds_int, topics_int, year_int, provider, model))
         
     except Exception as e:
