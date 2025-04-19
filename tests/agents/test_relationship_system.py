@@ -240,6 +240,7 @@ class TestRelationshipAwareSenatorAgent:
     """Tests for the RelationshipAwareSenatorAgent class."""
     
     @pytest.fixture
+    @pytest.mark.asyncio
     async def senator_agent(self):
         """Create a RelationshipAwareSenatorAgent for testing."""
         # Create mock dependencies

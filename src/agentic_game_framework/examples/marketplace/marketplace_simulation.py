@@ -9,6 +9,8 @@ import random
 import time
 from typing import Dict, List, Optional
 
+from ...events.base import BaseEvent
+
 from ...agents.agent_factory import AgentFactory
 from ...agents.agent_manager import AgentManager
 from ...events.event_bus import EventBus
@@ -123,13 +125,15 @@ class MarketplaceSimulation:
             
             # Create and register the merchant
             merchant = self.agent_factory.create_agent(
-                agent_type="merchant",
-                name=name,
-                attributes={"merchant_type": merchant_type},
-                specialties=specialties
+                "merchant",
+                {
+                    "name": name,
+                    "attributes": {"merchant_type": merchant_type},
+                    "specialties": specialties
+                }
             )
             
-            self.agent_manager.register_agent(merchant)
+            self.agent_manager.add_agent(merchant)
             self.merchants.append(merchant)
             
             print(f"Created merchant: {merchant.name} specializing in {', '.join(specialties)}")
@@ -156,13 +160,15 @@ class MarketplaceSimulation:
             
             # Create and register the customer
             customer = self.agent_factory.create_agent(
-                agent_type="customer",
-                name=name,
-                attributes={"customer_type": customer_type},
-                needs=needs
+                "customer",
+                {
+                    "name": name,
+                    "attributes": {"customer_type": customer_type},
+                    "needs": needs
+                }
             )
             
-            self.agent_manager.register_agent(customer)
+            self.agent_manager.add_agent(customer)
             self.customers.append(customer)
             
             print(f"Created customer: {customer.name} needing {', '.join(needs.keys())}")
@@ -171,13 +177,22 @@ class MarketplaceSimulation:
         print("Establishing initial relationships...")
         self._setup_initial_relationships()
         
+        # Create event handler wrappers
+        class EventHandlerWrapper:
+            def __init__(self, simulation, log_method):
+                self.simulation = simulation
+                self.log_method = log_method
+                
+            def handle_event(self, event):
+                self.log_method(event)
+        
         # Subscribe to events for logging
-        self.event_bus.subscribe("trade", self._log_trade_event)
-        self.event_bus.subscribe("price_change", self._log_price_change_event)
-        self.event_bus.subscribe("item_listing", self._log_item_listing_event)
-        self.event_bus.subscribe("negotiation", self._log_negotiation_event)
-        self.event_bus.subscribe("business_deal", self._log_business_deal_event)
-        self.event_bus.subscribe("market_trend", self._log_market_trend_event)
+        self.event_bus.subscribe("trade", EventHandlerWrapper(self, self._log_trade_event))
+        self.event_bus.subscribe("price_change", EventHandlerWrapper(self, self._log_price_change_event))
+        self.event_bus.subscribe("item_listing", EventHandlerWrapper(self, self._log_item_listing_event))
+        self.event_bus.subscribe("negotiation", EventHandlerWrapper(self, self._log_negotiation_event))
+        self.event_bus.subscribe("business_deal", EventHandlerWrapper(self, self._log_business_deal_event))
+        self.event_bus.subscribe("market_trend", EventHandlerWrapper(self, self._log_market_trend_event))
     
     def _setup_initial_relationships(self) -> None:
         """
@@ -194,9 +209,9 @@ class MarketplaceSimulation:
                     # They are competitors
                     strength = random.uniform(-0.5, -0.1)
                     relationship = self.relationship_manager.create_relationship(
-                        "competitor",
                         merchant_a.id,
                         merchant_b.id,
+                        "competitor",
                         strength
                     )
                     print(f"Created competitor relationship between {merchant_a.name} and {merchant_b.name}")
@@ -204,9 +219,9 @@ class MarketplaceSimulation:
                     # They are business partners
                     strength = random.uniform(0.1, 0.4)
                     relationship = self.relationship_manager.create_relationship(
-                        "business",
                         merchant_a.id,
                         merchant_b.id,
+                        "business",
                         strength
                     )
                     print(f"Created business relationship between {merchant_a.name} and {merchant_b.name}")
@@ -224,9 +239,9 @@ class MarketplaceSimulation:
                     # They have a supplier relationship
                     strength = random.uniform(0.2, 0.6)
                     relationship = self.relationship_manager.create_relationship(
-                        "supplier",
                         merchant.id,
                         customer.id,
+                        "supplier",
                         strength
                     )
                     print(f"Created supplier relationship between {merchant.name} and {customer.name}")
@@ -234,9 +249,9 @@ class MarketplaceSimulation:
                     # They have a basic business relationship
                     strength = random.uniform(0.0, 0.3)
                     relationship = self.relationship_manager.create_relationship(
-                        "business",
                         merchant.id,
                         customer.id,
+                        "business",
                         strength
                     )
                     print(f"Created business relationship between {merchant.name} and {customer.name}")
@@ -271,20 +286,26 @@ class MarketplaceSimulation:
         """
         # 1. Generate market trends (occasionally)
         if random.random() < self.config["market_trend_probability"]:
-            self._generate_market_trend()
+            market_trend_event = self._generate_market_trend()
+            # Update relationships based on market trend
+            if market_trend_event:
+                self.relationship_manager.update_relationships(market_trend_event)
         
         # 2. Let agents generate actions
-        self._generate_agent_actions()
+        # Note: Events are processed immediately when published in the EventBus
+        actions = self._generate_agent_actions()
         
-        # 3. Process all pending events
-        self.event_bus.process_events()
-        
-        # 4. Update relationships based on events
-        self.relationship_manager.update_relationships()
+        # 3. Update relationships based on actions
+        for action in actions:
+            if action:
+                self.relationship_manager.update_relationships(action)
     
-    def _generate_market_trend(self) -> None:
+    def _generate_market_trend(self) -> Optional[MarketTrendEvent]:
         """
         Generate a market-wide trend event.
+        
+        Returns:
+            Optional[MarketTrendEvent]: The generated event, or None if no event was generated
         """
         trend_types = ["inflation", "scarcity", "surplus", "demand_increase", "demand_decrease"]
         trend_type = random.choice(trend_types)
@@ -315,11 +336,18 @@ class MarketplaceSimulation:
         
         self.event_bus.publish(event)
         self.market_trends.append(event)
+        
+        return event
     
-    def _generate_agent_actions(self) -> None:
+    def _generate_agent_actions(self) -> List[BaseEvent]:
         """
         Let all agents generate actions.
+        
+        Returns:
+            List[BaseEvent]: List of generated actions/events
         """
+        actions = []
+        
         # Let merchants generate actions
         for merchant in self.merchants:
             action = merchant.generate_action()
@@ -331,6 +359,7 @@ class MarketplaceSimulation:
                 
                 # Publish the action as an event
                 self.event_bus.publish(action)
+                actions.append(action)
         
         # Let customers generate actions
         for customer in self.customers:
@@ -343,6 +372,9 @@ class MarketplaceSimulation:
                 
                 # Publish the action as an event
                 self.event_bus.publish(action)
+                actions.append(action)
+                
+        return actions
     
     def _log_trade_event(self, event: TradeEvent) -> None:
         """
