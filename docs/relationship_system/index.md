@@ -1,7 +1,7 @@
 # Senator Relationship System Documentation
 
 **Author:** Documentation Team  
-**Version:** 1.0.0  
+**Version:** 2.0.0
 **Date:** April 19, 2025
 
 ## Overview
@@ -17,6 +17,8 @@ The Senator Relationship System enhances the Roman Senate simulation by providin
 | [User Guide](user_guide.md) | How to use the relationship system in simulations |
 | [Developer Guide](developer_guide.md) | How to extend and customize the relationship system |
 | [Integration Guide](integration_guide.md) | How to integrate with the relationship system |
+| [Examples](examples.md) | Example usage scenarios and code samples |
+| [Integration Fixes](integration_fixes.md) | Documentation of fixes for integration issues |
 
 ## Quick Links
 
@@ -50,6 +52,7 @@ The Senator Relationship System enhances the Roman Senate simulation by providin
 - [Integration with Senator Agents](integration_guide.md#integration-with-senator-agents)
 - [Integration with Simulation Components](integration_guide.md#integration-with-simulation-components)
 - [Integration Examples](integration_guide.md#integration-examples)
+- [Recent Integration Fixes](integration_guide.md#recent-integration-fixes)
 - [Troubleshooting](integration_guide.md#troubleshooting)
 
 ## Key Features

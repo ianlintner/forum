@@ -1,7 +1,7 @@
 # Senator Relationship System: Integration Guide
 
 **Author:** Documentation Team  
-**Version:** 1.0.0  
+**Version:** 2.0.0
 **Date:** April 19, 2025
 
 ## Table of Contents
@@ -13,6 +13,7 @@
 - [Integration with Senator Agents](#integration-with-senator-agents)
 - [Integration with Simulation Components](#integration-with-simulation-components)
 - [Integration Examples](#integration-examples)
+- [Recent Integration Fixes](#recent-integration-fixes)
 - [Troubleshooting](#troubleshooting)
 - [Related Documentation](#related-documentation)
 
@@ -382,6 +383,113 @@ python -m src.roman_senate.cli simulate --log-level DEBUG --log-relationships
 ```
 
 This will log all relationship changes to the console and log file.
+
+## Recent Integration Fixes
+
+The relationship system has recently been enhanced with several integration fixes to ensure seamless operation with other components of the simulation. These fixes address issues that were identified during integration testing.
+
+### Random Abstention in Voting
+
+#### Issue Description
+
+The integration test `test_debate_and_vote_integration` in `tests/agents/test_integration.py` was failing because the random abstention feature in `SenateEnvironment.run_vote()` was occasionally causing senators to abstain from voting, which made the test results non-deterministic.
+
+#### Solution
+
+We implemented a testing flag in the `run_vote` method that disables the random abstention feature during tests:
+
+```python
+async def run_vote(self, topic_text, context, testing=False):
+    """Run a vote on a topic.
+    
+    Args:
+        topic_text: The topic to vote on
+        context: Additional context for the vote
+        testing: If True, disable random abstention for deterministic testing
+    """
+    # Get stances from all senators
+    votes = {}
+    for senator in self.senators:
+        stance, reasoning = await senator.decide_stance(topic_text, context)
+        
+        # In normal operation (not testing), senators have a small chance to abstain
+        if not testing and random.random() < 0.05:  # 5% chance to abstain
+            votes[senator.senator["id"]] = "abstain"
+            logging.info(f"{senator.name} decided to abstain despite stance: {stance}")
+        else:
+            votes[senator.senator["id"]] = stance
+    
+    # Create and publish vote event
+    # ...
+```
+
+This fix ensures that tests are deterministic while preserving the random abstention feature for normal simulation runs.
+
+### Relationship Influence on Voting
+
+#### Issue Description
+
+Relationships were not properly influencing voting decisions in certain scenarios, particularly when senators had strong relationships with others who had opposing stances.
+
+#### Solution
+
+We enhanced the `decide_stance` method in `RelationshipAwareSenatorAgent` to properly account for relationship influences:
+
+```python
+# Improved relationship influence calculation
+relationship_influence = 0.0
+for senator_id, stance in key_senators.items():
+    # Get relationship with this senator
+    rel_score = self.relationship_manager.get_overall_relationship(senator_id)
+    
+    # Only strong relationships influence decisions
+    if abs(rel_score) > 0.3:
+        # Calculate influence based on relationship strength and stance
+        if stance == "support":
+            influence = rel_score * 0.2  # Positive relationship pulls toward support
+        elif stance == "oppose":
+            influence = -rel_score * 0.2  # Positive relationship pulls toward oppose
+        else:
+            influence = 0.0
+            
+        relationship_influence += influence
+```
+
+This fix ensures that relationships properly influence voting decisions, making the simulation more realistic.
+
+### Event Handling Synchronization
+
+#### Issue Description
+
+In some cases, relationship events were being processed before the events that triggered them, causing inconsistent relationship states.
+
+#### Solution
+
+We implemented a synchronization mechanism in the event bus to ensure proper event ordering:
+
+```python
+async def publish(self, event):
+    """Publish an event to all subscribers.
+    
+    Args:
+        event: The event to publish
+    """
+    # Store the event in history
+    self.event_history.append(event)
+    
+    # Get all subscribers for this event type
+    subscribers = self.subscribers.get(event.TYPE, [])
+    
+    # Process source events first if this is a relationship change event
+    if event.TYPE == RelationshipChangeEvent.TYPE and event.source_event_id:
+        await self._ensure_source_event_processed(event.source_event_id)
+    
+    # Notify all subscribers
+    for subscriber in subscribers:
+        await subscriber(event)
+```
+
+This fix ensures that events are processed in the correct order, maintaining consistency in the relationship system.
 
 ## Related Documentation
 

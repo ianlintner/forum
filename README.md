@@ -22,6 +22,7 @@ The Roman Senate Game is an immersive political simulation set in the late Roman
 - **Historical Authenticity**: Set in the late Republic era with historically accurate debate topics and context
 - **Sophisticated Speech Generation**: Experience speeches with classical structure, rhetorical devices, and Latin flourishes
 - **Faction Politics**: Navigate the complex dynamics between Optimates and Populares factions
+- **Dynamic Relationship System**: Experience realistic senator relationships that evolve based on interactions and influence decision-making
 - **AI-Generated Narrative System**: Experience a living, evolving Rome with dynamic daily events, rumors, and interactions
 - **Three Game Modes**:
   - **Simulation Mode**: Watch autonomous senator agents with memory, dynamic relationships, and advanced decision-making
@@ -135,9 +136,10 @@ python -m roman_senate.cli info
 In Simulation Mode, senators function as autonomous agents with memory, goals, and decision-making capabilities:
 
 1. Senators remember past debates, votes, and interactions
-2. They form dynamic relationships that evolve based on voting alignment
+2. They form multi-dimensional relationships (political, personal, mentor/mentee, rivalry, family) that evolve based on interactions
 3. They provide detailed reasoning for their stances, rhetorical approaches, and votes
 4. The simulation displays the evolving relationship network between senators
+5. Relationships naturally decay over time when there are no interactions
 
 This mode is ideal for:
 - Observing emergent political behavior and coalition formation
@@ -270,6 +272,7 @@ For more detailed information about the game components and architecture, see th
 - [Agent-Driven Simulation Guide](docs/agent_simulation.md)
 - [Agent Architecture Documentation](docs/agent_architecture.md)
 - [Narrative System Documentation](docs/components/narrative_system.md)
+- [Relationship System Documentation](docs/relationship_system.md)
 - [Roman Senate Traditions](docs/roman_senate_traditions.md)
 - [LLM Provider Configuration](docs/llm_providers.md)
 

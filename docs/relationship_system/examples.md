@@ -1,7 +1,7 @@
 # Senator Relationship System: Examples
 
 **Author:** Documentation Team  
-**Version:** 1.0.0  
+**Version:** 2.0.0
 **Date:** April 19, 2025
 
 ## Table of Contents
@@ -28,6 +28,7 @@
 - [Advanced Examples](#advanced-examples)
   - [Custom Relationship Types](#custom-relationship-types)
   - [Custom Event Handlers](#custom-event-handlers)
+  - [Integration Testing](#integration-testing)
 
 ## Introduction
 
@@ -245,6 +246,29 @@ if base_stance != final_stance:
     print("Stance changed due to relationship influence!")
 ```
 
+When testing relationship-influenced decisions, you can use the `testing=True` parameter to ensure deterministic behavior:
+
+```python
+# For testing purposes, disable random abstention
+async def run_vote_test(environment, topic):
+    """Run a vote with deterministic behavior for testing."""
+    # Get stances from all senators
+    votes = {}
+    for senator in environment.senators:
+        stance, reasoning = await senator.decide_stance(topic, {})
+        votes[senator.senator["id"]] = stance  # No random abstention
+    
+    # Create and publish vote event
+    vote_event = VoteEvent(
+        proposal=topic,
+        votes=votes,
+        metadata={"proposal": topic}
+    )
+    
+    await environment.event_bus.publish(vote_event)
+    return votes
+```
+
 ### Relationship-Influenced Voting
 
 ```python
@@ -436,3 +460,93 @@ def _handle_economic_event(self, event: EconomicEvent):
                 f"Failed to provide promised loan of {event.amount} denarii",
                 event.event_id
             )
+            
+### Integration Testing
+
+When testing the integration between the relationship system and other components, it's important to ensure deterministic behavior. Here's an example of how to test the integration between the relationship system and the voting system:
+
+```python
+import pytest
+from roman_senate.core.events import EventBus
+from roman_senate.agents.relationship_aware_senator_agent import RelationshipAwareSenatorAgent
+from roman_senate.agents.memory_persistence_manager import MemoryPersistenceManager
+from roman_senate.utils.llm.mock import MockLLMProvider
+from roman_senate.core.senate_session import SenateEnvironment
+
+@pytest.fixture
+async def test_environment():
+    """Create a test environment with relationship-aware senators."""
+    # Create shared components
+    event_bus = EventBus()
+    memory_manager = MemoryPersistenceManager(base_path="saves/test")
+    llm_provider = MockLLMProvider()
+    
+    # Create senators
+    cicero = RelationshipAwareSenatorAgent(
+        senator={"name": "Cicero", "id": "senator_cicero", "faction": "Optimates"},
+        llm_provider=llm_provider,
+        event_bus=event_bus,
+        memory_manager=memory_manager
+    )
+    
+    cato = RelationshipAwareSenatorAgent(
+        senator={"name": "Cato", "id": "senator_cato", "faction": "Optimates"},
+        llm_provider=llm_provider,
+        event_bus=event_bus,
+        memory_manager=memory_manager
+    )
+    
+    caesar = RelationshipAwareSenatorAgent(
+        senator={"name": "Caesar", "id": "senator_caesar", "faction": "Populares"},
+        llm_provider=llm_provider,
+        event_bus=event_bus,
+        memory_manager=memory_manager
+    )
+    
+    # Create environment
+    environment = SenateEnvironment(
+        senators=[cicero, cato, caesar],
+        event_bus=event_bus,
+        llm_provider=llm_provider
+    )
+    
+    # Set up initial relationships
+    cicero.relationship_manager.update_relationship(
+        "senator_cato", "political", 0.8, "Strong political alliance"
+    )
+    
+    return environment
+
+@pytest.mark.asyncio
+async def test_debate_and_vote_integration(test_environment):
+    """Test integration between debate, relationships, and voting."""
+    env = test_environment
+    
+    # Patch the run_vote method to disable random abstention
+    original_run_vote = env.run_vote
+    
+    async def patched_run_vote(topic_text, context):
+        # Call the original method but with testing=True to disable random abstention
+        return await original_run_vote(topic_text, context, testing=True)
+    
+    # Apply the patch
+    env.run_vote = patched_run_vote
+    
+    # Run a debate and vote
+    topic = "Military Funding"
+    await env.run_debate(topic, {})
+    vote_results = await env.run_vote(topic, {})
+    
+    # Check that relationships influenced the vote
+    assert vote_results["for"] == 2, "Should have 2 votes for (Cicero and Cato)"
+    assert vote_results["against"] == 1, "Should have 1 vote against (Caesar)"
+```
+
+This example demonstrates how to:
+
+1. Create a test environment with relationship-aware senators
+2. Patch the `run_vote` method to disable random abstention for deterministic testing
+3. Test that relationships properly influence voting behavior
+4. Make assertions about the expected voting results
+
+By using the `testing=True` parameter, you ensure that the random abstention feature doesn't interfere with your tests, making them reliable and deterministic.
