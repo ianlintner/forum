@@ -12,14 +12,14 @@ from src.agentic_game_framework.events.base import BaseEvent, EventHandler
 from src.agentic_game_framework.events.event_bus import EventBus
 
 
-class TestEvent(BaseEvent):
+class MockEvent(BaseEvent):
     """Simple event implementation for testing."""
     
     def __init__(self, event_type="test_event", source=None, target=None, data=None, timestamp=None, event_id=None):
         super().__init__(event_type, source, target, data, timestamp, event_id)
 
 
-class TestEventHandler(EventHandler):
+class MockEventHandler(EventHandler):
     """Simple event handler implementation for testing."""
     
     def __init__(self):
@@ -36,7 +36,7 @@ class TestEventHandler(EventHandler):
 
 def test_event_initialization():
     """Test that a BaseEvent can be properly initialized."""
-    event = TestEvent(
+    event = MockEvent(
         event_type="test_type",
         source="test_source",
         target="test_target",
@@ -53,7 +53,7 @@ def test_event_initialization():
 
 def test_event_to_dict():
     """Test that a BaseEvent can be converted to a dictionary."""
-    event = TestEvent(
+    event = MockEvent(
         event_type="test_type",
         source="test_source",
         target="test_target",
@@ -81,7 +81,7 @@ def test_event_from_dict():
         "id": "test_id"
     }
     
-    event = TestEvent.from_dict(event_dict)
+    event = MockEvent.from_dict(event_dict)
     
     assert event.event_type == "test_type"
     assert event.source == "test_source"
@@ -99,7 +99,7 @@ def test_event_missing_event_type():
     }
     
     with pytest.raises(ValueError):
-        TestEvent.from_dict(event_dict)
+        MockEvent.from_dict(event_dict)
 
 
 # --- EventBus Tests ---
@@ -108,9 +108,9 @@ def test_event_missing_event_type():
 def event_bus_setup():
     """Fixture providing an EventBus and handlers for testing."""
     event_bus = EventBus()
-    handler1 = TestEventHandler()
-    handler2 = TestEventHandler()
-    handler3 = TestEventHandler()
+    handler1 = MockEventHandler()
+    handler2 = MockEventHandler()
+    handler3 = MockEventHandler()
     
     return {
         "event_bus": event_bus,
@@ -131,9 +131,9 @@ def test_subscribe_and_publish(event_bus_setup):
     event_bus.subscribe("type2", handler2)
     
     # Create and publish events
-    event1 = TestEvent(event_type="type1", data={"value": 1})
-    event2 = TestEvent(event_type="type2", data={"value": 2})
-    event3 = TestEvent(event_type="type3", data={"value": 3})
+    event1 = MockEvent(event_type="type1", data={"value": 1})
+    event2 = MockEvent(event_type="type2", data={"value": 2})
+    event3 = MockEvent(event_type="type3", data={"value": 3})
     
     event_bus.publish(event1)
     event_bus.publish(event2)
@@ -158,8 +158,8 @@ def test_subscribe_to_all(event_bus_setup):
     event_bus.subscribe_to_all(handler3)
     
     # Create and publish events of different types
-    event1 = TestEvent(event_type="type1")
-    event2 = TestEvent(event_type="type2")
+    event1 = MockEvent(event_type="type1")
+    event2 = MockEvent(event_type="type2")
     
     event_bus.publish(event1)
     event_bus.publish(event2)
@@ -177,11 +177,11 @@ def test_unsubscribe(event_bus_setup):
     
     # Subscribe and then unsubscribe a handler
     event_bus.subscribe("type1", handler1)
-    event_bus.publish(TestEvent(event_type="type1"))
+    event_bus.publish(MockEvent(event_type="type1"))
     assert len(handler1.handled_events) == 1
     
     event_bus.unsubscribe("type1", handler1)
-    event_bus.publish(TestEvent(event_type="type1"))
+    event_bus.publish(MockEvent(event_type="type1"))
     assert len(handler1.handled_events) == 1  # Still 1, not 2
 
 
@@ -192,11 +192,11 @@ def test_unsubscribe_from_all(event_bus_setup):
     
     # Subscribe to all and then unsubscribe from all
     event_bus.subscribe_to_all(handler3)
-    event_bus.publish(TestEvent(event_type="type1"))
+    event_bus.publish(MockEvent(event_type="type1"))
     assert len(handler3.handled_events) == 1
     
     event_bus.unsubscribe_from_all(handler3)
-    event_bus.publish(TestEvent(event_type="type1"))
+    event_bus.publish(MockEvent(event_type="type1"))
     assert len(handler3.handled_events) == 1  # Still 1, not 2
 
 
@@ -243,7 +243,7 @@ def test_handler_priority(event_bus_setup):
     event_bus.subscribe("test", handler_high, priority=2)
     
     # Publish an event
-    event_bus.publish(TestEvent(event_type="test"))
+    event_bus.publish(MockEvent(event_type="test"))
     
     # Check that handlers were called in priority order
     assert call_order == ["high", "medium", "low"]
@@ -263,8 +263,8 @@ def test_event_filter(event_bus_setup):
     event_bus.add_filter(filter_func)
     
     # Publish events with different sources
-    event_bus.publish(TestEvent(event_type="test", source="allowed_source"))
-    event_bus.publish(TestEvent(event_type="test", source="blocked_source"))
+    event_bus.publish(MockEvent(event_type="test", source="allowed_source"))
+    event_bus.publish(MockEvent(event_type="test", source="blocked_source"))
     
     # Check that only the allowed event was processed
     assert len(handler1.handled_events) == 1
@@ -272,5 +272,5 @@ def test_event_filter(event_bus_setup):
     
     # Remove the filter and check that events are no longer blocked
     event_bus.remove_filter(filter_func)
-    event_bus.publish(TestEvent(event_type="test", source="blocked_source"))
+    event_bus.publish(MockEvent(event_type="test", source="blocked_source"))
     assert len(handler1.handled_events) == 2

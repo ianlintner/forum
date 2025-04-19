@@ -6,6 +6,7 @@ RelationshipManager, and RelationshipAwareSenatorAgent classes.
 """
 
 import pytest
+import pytest_asyncio
 import asyncio
 from datetime import datetime
 from unittest.mock import MagicMock, patch, AsyncMock
@@ -239,8 +240,7 @@ class TestRelationshipManager:
 class TestRelationshipAwareSenatorAgent:
     """Tests for the RelationshipAwareSenatorAgent class."""
     
-    @pytest.fixture
-    @pytest.mark.asyncio
+    @pytest_asyncio.fixture
     async def senator_agent(self):
         """Create a RelationshipAwareSenatorAgent for testing."""
         # Create mock dependencies
@@ -273,8 +273,8 @@ class TestRelationshipAwareSenatorAgent:
     
     async def test_decide_stance_with_relationships(self, senator_agent):
         """Test that relationships influence stance decisions."""
-        # Await the coroutine to get the actual agent
-        agent = await senator_agent
+        # Use the agent directly
+        agent = senator_agent
         
         # Create a simplified version of the decide_stance method for testing
         async def test_decide_stance(topic, context):
@@ -344,8 +344,8 @@ class TestRelationshipAwareSenatorAgent:
     
     async def test_apply_time_effects(self, senator_agent):
         """Test applying time effects."""
-        # Await the coroutine to get the actual agent
-        agent = await senator_agent
+        # Use the agent directly
+        agent = senator_agent
         
         # Apply time effects
         await agent.apply_time_effects(30)
