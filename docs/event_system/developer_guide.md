@@ -1,7 +1,7 @@
 # Roman Senate Event System: Developer Guide
 
 **Author:** Documentation Team  
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Date:** April 18, 2025
 
 ## Table of Contents
@@ -16,27 +16,35 @@
   - [Publishing Events](#publishing-events)
   - [Subscribing to Events](#subscribing-to-events)
   - [Handling Events](#handling-events)
+  - [Event Prioritization](#event-prioritization)
 - [Senator Agent Integration](#senator-agent-integration)
   - [Event-Driven Senator Agent](#event-driven-senator-agent)
   - [Event Memory](#event-memory)
   - [Reaction Generation](#reaction-generation)
   - [Interjection Generation](#interjection-generation)
+  - [Position Change Logic](#position-change-logic)
 - [Debate Management](#debate-management)
   - [Debate Lifecycle](#debate-lifecycle)
   - [Speaker Management](#speaker-management)
   - [Interruption Handling](#interruption-handling)
+  - [Debate Coordination](#debate-coordination)
 - [Testing the Event System](#testing-the-event-system)
   - [Unit Testing](#unit-testing)
   - [Integration Testing](#integration-testing)
   - [Scenario Testing](#scenario-testing)
+  - [Test Mocking](#test-mocking)
+  - [Test Coverage](#test-coverage)
 - [Extending the System](#extending-the-system)
   - [Adding New Event Types](#adding-new-event-types)
   - [Creating Custom Handlers](#creating-custom-handlers)
   - [Modifying Debate Behavior](#modifying-debate-behavior)
+  - [Extending Senator Behavior](#extending-senator-behavior)
 - [Best Practices](#best-practices)
   - [Event Design](#event-design)
   - [Performance Considerations](#performance-considerations)
+  - [Error Handling](#error-handling)
   - [Debugging Tips](#debugging-tips)
+  - [Code Organization](#code-organization)
 
 ## Introduction
 
@@ -97,11 +105,50 @@ classDiagram
         +to_dict()
     }
     
+    class DebateEventType {
+        <<enumeration>>
+        DEBATE_START
+        DEBATE_END
+        SPEAKER_CHANGE
+        TOPIC_CHANGE
+    }
+    
+    class InterjectionType {
+        <<enumeration>>
+        SUPPORT
+        CHALLENGE
+        PROCEDURAL
+        EMOTIONAL
+        INFORMATIONAL
+    }
+    
     Event <|-- DebateEvent
     Event <|-- SpeechEvent
     Event <|-- ReactionEvent
     Event <|-- InterjectionEvent
+    DebateEvent --> DebateEventType
+    InterjectionEvent --> InterjectionType
 ```
+
+The `Event` class is the base class for all events in the system. It provides common properties and methods for all event types:
+
+```python
+class Event:
+    def __init__(self, event_type: str, source: Any = None, metadata: Optional[Dict[str, Any]] = None):
+        self.event_id = str(uuid.uuid4())
+        self.event_type = event_type
+        self.timestamp = datetime.now().isoformat()
+        self.source = source
+        self.metadata = metadata or {}
+        self.priority = 0  # Default priority (higher values = higher priority)
+```
+
+Specific event types extend the base `Event` class to add type-specific properties and behavior:
+
+- `DebateEvent`: Events related to the overall debate process (start, end, speaker change)
+- `SpeechEvent`: Represents a speech delivered by a senator
+- `ReactionEvent`: Represents a senator's reaction to a speech
+- `InterjectionEvent`: Represents an interruption during a speech
 
 #### EventBus
 
@@ -127,6 +174,38 @@ classDiagram
     }
     
     EventBus o-- "0..*" EventHandler : subscribers
+```
+
+The `EventBus` maintains a mapping of event types to handler functions or objects. When an event is published, the bus notifies all subscribers for that event type.
+
+```python
+class EventBus:
+    def __init__(self):
+        self.subscribers = defaultdict(list)
+        self.published_events = []
+        self.max_history = 100
+        
+    def subscribe(self, event_type: str, handler: Union[EventHandler, Callable[[Event], Any]]) -> None:
+        if handler not in self.subscribers[event_type]:
+            self.subscribers[event_type].append(handler)
+            
+    async def publish(self, event: Event) -> None:
+        self.published_events.append(event)
+        
+        # Get handlers for this event type
+        handlers = self.subscribers.get(event.event_type, [])
+        
+        # Notify all subscribers
+        for handler in handlers:
+            try:
+                if hasattr(handler, 'handle_event'):
+                    await handler.handle_event(event)
+                else:
+                    result = handler(event)
+                    if asyncio.iscoroutine(result):
+                        await result
+            except Exception as e:
+                logger.error(f"Error in event handler: {e}", exc_info=True)
 ```
 
 #### DebateManager
@@ -155,6 +234,13 @@ classDiagram
     DebateManager --> EventBus
 ```
 
+The `DebateManager` is responsible for:
+- Starting and ending debates
+- Managing the speaker queue
+- Publishing speech events
+- Handling interruptions and reactions
+- Coordinating the overall debate flow
+
 ### Event Flow
 
 The following sequence diagram illustrates the flow of events during a debate:
@@ -179,15 +265,66 @@ sequenceDiagram
     end
 ```
 
+This flow shows how events propagate through the system:
+1. A senator generates a speech
+2. The debate manager publishes a speech event
+3. Other senators receive the event and may react or interject
+4. Reactions and interjections are published back to the event bus
+5. The debate manager handles interjections, potentially interrupting the speaker
+
 ### Design Patterns
 
 The event system implements several design patterns:
 
 1. **Publisher-Subscriber Pattern**: The core of the event system, allowing loose coupling between components.
+   ```python
+   # Publisher
+   await event_bus.publish(speech_event)
+   
+   # Subscriber
+   event_bus.subscribe("speech", handle_speech_event)
+   ```
+
 2. **Observer Pattern**: Senators observe events and react to them.
+   ```python
+   # Senator observes speech events
+   async def handle_speech_event(self, event: SpeechEvent) -> None:
+       # Process the speech event
+       self.memory.record_event(event)
+   ```
+
 3. **Command Pattern**: Events encapsulate actions to be performed.
+   ```python
+   # Create a command (event) to be executed
+   debate_start_event = DebateEvent(
+       debate_event_type=DebateEventType.DEBATE_START,
+       topic="Expansion in Gaul"
+   )
+   ```
+
 4. **Strategy Pattern**: Different event handling strategies for different event types.
+   ```python
+   # Different strategies for handling different event types
+   event_bus.subscribe("speech", handle_speech_event)
+   event_bus.subscribe("reaction", handle_reaction_event)
+   event_bus.subscribe("interjection", handle_interjection_event)
+   ```
+
 5. **Factory Pattern**: Creation of different event types.
+   ```python
+   # Factory method for creating speech events
+   async def publish_speech(self, speaker, topic, latin_content, english_content, stance, key_points=None):
+       speech_event = SpeechEvent(
+           speaker=speaker,
+           topic=topic,
+           latin_content=latin_content,
+           english_content=english_content,
+           stance=stance,
+           key_points=key_points
+       )
+       await self.event_bus.publish(speech_event)
+       return speech_event
+   ```
 
 ## Working with Events
 
@@ -215,6 +352,25 @@ speech_event = SpeechEvent(
     stance="support",
     key_points=["Carthage is a threat", "War is necessary"]
 )
+
+# Create a reaction event
+reaction_event = ReactionEvent(
+    reactor=senator,
+    target_event=speech_event,
+    reaction_type="agreement",
+    content="Nods in agreement"
+)
+
+# Create an interjection event
+interjection_event = InterjectionEvent(
+    interjector=senator,
+    target_speaker=speaker,
+    interjection_type=InterjectionType.CHALLENGE,
+    latin_content="Nego!",
+    english_content="I disagree!",
+    target_speech_id=speech_event.speech_id,
+    causes_disruption=True
+)
 ```
 
 ### Publishing Events
@@ -227,6 +383,15 @@ event_bus = EventBus()
 
 # Publish an event
 await event_bus.publish(speech_event)
+
+# Publish multiple events
+for event in events:
+    await event_bus.publish(event)
+    
+# Publish with priority
+high_priority_event = Event("important_event")
+high_priority_event.priority = 10  # Higher priority
+await event_bus.publish(high_priority_event)
 ```
 
 ### Subscribing to Events
@@ -239,6 +404,13 @@ event_bus.subscribe(SpeechEvent.TYPE, self.handle_speech_event)
 
 # Subscribe to debate events
 event_bus.subscribe(DebateEvent.TYPE, self.handle_debate_event)
+
+# Subscribe to multiple event types
+for event_type in ["speech", "reaction", "interjection"]:
+    event_bus.subscribe(event_type, self.handle_event)
+    
+# Unsubscribe when no longer needed
+event_bus.unsubscribe("speech", self.handle_speech_event)
 ```
 
 ### Handling Events
@@ -255,10 +427,54 @@ async def handle_speech_event(self, event: SpeechEvent) -> None:
     # Record the event in memory
     self.memory.record_event(event)
     
+    # Process the speech content
+    topic = event.metadata.get("topic")
+    stance = event.stance
+    
     # Determine if senator should react to the speech
     if await self._should_react_to_speech(event):
         # Generate and publish reaction
         await self._generate_and_publish_reaction(event)
+        
+    # Check if stance should change based on speech
+    await self._consider_stance_change(event)
+```
+
+For class-based handlers, implement the `EventHandler` protocol:
+
+```python
+@runtime_checkable
+class EventHandler(Protocol):
+    async def handle_event(self, event: Event) -> None:
+        ...
+
+class SpeechHandler(EventHandler):
+    async def handle_event(self, event: Event) -> None:
+        if event.event_type == "speech":
+            # Process speech event
+            print(f"Speech by {event.speaker.get('name')}: {event.english_content}")
+```
+
+### Event Prioritization
+
+Events can be prioritized to ensure important events are handled first:
+
+```python
+# Set event priority
+event.priority = 10  # Higher priority events are processed first
+
+# Get handler priority (used for sorting handlers)
+def _get_handler_priority(self, handler: Any) -> int:
+    # If handler is a senator agent, use their rank
+    if hasattr(handler, 'senator') and hasattr(handler.senator, 'get'):
+        return handler.senator.get('rank', 0)
+    
+    # If handler has an explicit priority attribute, use that
+    if hasattr(handler, 'priority'):
+        return handler.priority
+    
+    # Default priority
+    return 0
 ```
 
 ## Senator Agent Integration
@@ -269,15 +485,13 @@ The `EventDrivenSenatorAgent` extends the base `SenatorAgent` with event-driven 
 
 ```python
 class EventDrivenSenatorAgent(SenatorAgent):
-    """Event-driven implementation of a Roman Senator agent."""
-    
-    def __init__(self, senator, llm_provider, event_bus):
-        """Initialize an event-driven senator agent."""
+    def __init__(self, senator: Dict[str, Any], llm_provider: LLMProvider, event_bus: EventBus):
+        # Initialize with base senator properties but replace memory with EventMemory
         self.senator = senator
         self.llm_provider = llm_provider
         self.current_stance = None
         
-        # Use enhanced event memory
+        # Use enhanced event memory instead of basic agent memory
         self.memory = EventMemory()
         
         self.event_bus = event_bus
@@ -287,32 +501,123 @@ class EventDrivenSenatorAgent(SenatorAgent):
         
         # Subscribe to relevant event types
         self.subscribe_to_events()
+        
+    def subscribe_to_events(self) -> None:
+        """Subscribe to relevant event types."""
+        self.event_bus.subscribe(SpeechEvent.TYPE, self.handle_speech_event)
+        self.event_bus.subscribe(DebateEvent.TYPE, self.handle_debate_event)
+```
+
+The agent subscribes to speech and debate events, and processes them accordingly:
+
+```python
+async def handle_speech_event(self, event: SpeechEvent) -> None:
+    # Skip own speeches
+    if event.speaker.get("id") == self.senator.get("id"):
+        return
+        
+    # Record the event in memory
+    self.memory.record_event(event)
+    
+    # Store current speaker for potential reactions
+    self.current_speaker = event.speaker
+    
+    # Determine if senator should react to the speech
+    if await self._should_react_to_speech(event):
+        # Generate and publish reaction
+        await self._generate_and_publish_reaction(event)
+        
+    # Determine if senator should interject
+    if await self._should_interject(event):
+        # Generate and publish interjection
+        await self._generate_and_publish_interjection(event)
+        
+    # Check if stance should change based on speech
+    await self._consider_stance_change(event)
 ```
 
 ### Event Memory
 
-The `EventMemory` class extends the base `AgentMemory` with event-specific storage:
+The `EventMemory` class extends the base `AgentMemory` with event-specific capabilities:
 
 ```python
 class EventMemory(AgentMemory):
-    """Enhanced memory for event-driven senator agents."""
-    
     def __init__(self):
         """Initialize an empty event memory."""
         super().__init__()
         # Store observed events
-        self.event_history = []
+        self.event_history: List[Dict[str, Any]] = []
         # Store reactions to events
-        self.reaction_history = []
+        self.reaction_history: List[Dict[str, Any]] = []
         # Store stance changes triggered by events
-        self.stance_changes = {}
-        # Track event-based relationships
-        self.event_relationships = {}
+        self.stance_changes: Dict[str, List[Dict[str, Any]]] = {}
+        # Track event-based relationships (how events affected relationships)
+        self.event_relationships: Dict[str, List[Dict[str, Any]]] = {}
+```
+
+The memory system allows senators to:
+- Record events they observe
+- Track their reactions to events
+- Remember stance changes and the events that triggered them
+- Track how events affected their relationships with other senators
+
+```python
+def record_event(self, event: Event) -> None:
+    """Record an observed event in memory."""
+    # Store basic event data
+    event_data = {
+        "event_id": event.event_id,
+        "event_type": event.event_type,
+        "timestamp": event.timestamp,
+        "source": getattr(event.source, "name", str(event.source)) if event.source else "Unknown",
+        "metadata": event.metadata.copy(),
+        "recorded_at": datetime.now().isoformat()
+    }
+    
+    # Add to event history
+    self.event_history.append(event_data)
+    
+    # Also add as a general observation for backward compatibility
+    source_name = getattr(event.source, "name", str(event.source)) if event.source else "Unknown"
+    self.add_observation(f"Observed {event.event_type} event from {source_name}")
 ```
 
 ### Reaction Generation
 
 Senators generate reactions to speeches based on various factors:
+
+```python
+async def _should_react_to_speech(self, event: SpeechEvent) -> bool:
+    """Determine if the senator should react to a speech."""
+    # Base probability of reaction
+    base_probability = 0.3  # 30% chance by default
+    
+    # Adjust based on relationship with speaker
+    relationship = self.memory.relationship_scores.get(event.speaker.get("name", ""), 0)
+    relationship_factor = abs(relationship) * 0.2  # Max +/- 0.2
+    
+    # Faction alignment affects reaction probability
+    speaker_faction = event.speaker.get("faction", "")
+    if speaker_faction == self.faction:
+        # More likely to react positively to same faction
+        if relationship >= 0:
+            base_probability += 0.1
+    else:
+        # More likely to react negatively to different faction
+        if relationship < 0:
+            base_probability += 0.1
+            
+    # Topic interest affects reaction probability
+    topic_interest = random.random() * 0.3  # Random interest level
+    
+    # Calculate final probability
+    final_probability = min(0.8, base_probability + relationship_factor + topic_interest)
+    
+    # Decide whether to react
+    return random.random() < final_probability
+```
+
+When a senator decides to react, they generate and publish a reaction event:
 
 ```python
 async def _generate_and_publish_reaction(self, event: SpeechEvent) -> None:
@@ -321,13 +626,14 @@ async def _generate_and_publish_reaction(self, event: SpeechEvent) -> None:
     relationship = self.memory.relationship_scores.get(event.speaker.get("name", ""), 0)
     stance_agreement = (self.current_stance == event.stance)
     
-    # Choose reaction type based on relationship and stance
+    reaction_types = ["neutral", "agreement", "disagreement", "interest", "boredom", "skepticism"]
+    
     if relationship > 0.3 and stance_agreement:
         reaction_type = random.choice(["agreement", "interest"])
     elif relationship < -0.3 and not stance_agreement:
         reaction_type = random.choice(["disagreement", "skepticism"])
     else:
-        reaction_type = random.choice(["neutral", "agreement", "disagreement", "interest", "boredom", "skepticism"])
+        reaction_type = random.choice(reaction_types)
         
     # Generate reaction content
     reaction_content = await self._generate_reaction_content(event, reaction_type)
@@ -341,11 +647,43 @@ async def _generate_and_publish_reaction(self, event: SpeechEvent) -> None:
     )
     
     await self.event_bus.publish(reaction_event)
+    
+    # Record in memory
+    self.memory.record_reaction(event.event_id, reaction_type, reaction_content)
 ```
 
 ### Interjection Generation
 
-Higher-ranking senators may generate interjections during speeches:
+Senators may interject during speeches based on various factors:
+
+```python
+async def _should_interject(self, event: SpeechEvent) -> bool:
+    """Determine if the senator should interject during a speech."""
+    # Base probability of interjection (lower than reaction)
+    base_probability = 0.1  # 10% chance by default
+    
+    # Adjust based on relationship with speaker (stronger feelings = more likely to interject)
+    relationship = self.memory.relationship_scores.get(event.speaker.get("name", ""), 0)
+    relationship_factor = abs(relationship) * 0.15  # Max +/- 0.15
+    
+    # Rank affects interjection probability
+    # Higher rank senators are more likely to interject
+    rank = self.senator.get("rank", 0)
+    rank_factor = min(0.2, rank * 0.05)  # Max +0.2 for rank 4+
+    
+    # Stance disagreement increases interjection probability
+    stance_factor = 0
+    if self.current_stance and self.current_stance != event.stance:
+        stance_factor = 0.15
+        
+    # Calculate final probability
+    final_probability = min(0.5, base_probability + relationship_factor + rank_factor + stance_factor)
+    
+    # Decide whether to interject
+    return random.random() < final_probability
+```
+
+When a senator decides to interject, they generate and publish an interjection event:
 
 ```python
 async def _generate_and_publish_interjection(self, event: SpeechEvent) -> None:
@@ -371,6 +709,69 @@ async def _generate_and_publish_interjection(self, event: SpeechEvent) -> None:
     )
     
     await self.event_bus.publish(interjection_event)
+    
+    # Record in memory
+    self.memory.record_event(interjection_event)
+```
+
+### Position Change Logic
+
+Senators may change their position on a topic based on persuasive speeches:
+
+```python
+async def _consider_stance_change(self, event: SpeechEvent) -> None:
+    """Consider changing stance based on a speech."""
+    # Only consider stance change if we have a current stance and topic
+    if not self.current_stance or not self.active_debate_topic:
+        return
+        
+    # Skip if the speech is on a different topic
+    speech_topic = event.metadata.get("topic")
+    if speech_topic != self.active_debate_topic:
+        return
+        
+    # Base probability of stance change (very low)
+    base_probability = 0.05  # 5% chance by default
+    
+    # Adjust based on relationship with speaker
+    relationship = self.memory.relationship_scores.get(event.speaker.get("name", ""), 0)
+    relationship_factor = max(0, relationship * 0.1)  # Only positive relationships increase chance
+    
+    # Faction alignment affects stance change probability
+    speaker_faction = event.speaker.get("faction", "")
+    faction_factor = 0.05 if speaker_faction == self.faction else 0
+    
+    # Speaker rank affects persuasiveness
+    rank_factor = min(0.1, event.speaker.get("rank", 0) * 0.025)  # Max +0.1 for rank 4+
+    
+    # Calculate final probability
+    final_probability = min(0.3, base_probability + relationship_factor + faction_factor + rank_factor)
+    
+    # Decide whether to change stance
+    if random.random() < final_probability:
+        # Determine new stance (usually move toward speaker's stance)
+        speaker_stance = event.stance
+        old_stance = self.current_stance
+        
+        # If we're neutral, adopt speaker's stance
+        if old_stance == "neutral":
+            new_stance = speaker_stance
+        # If we disagree with speaker, move to neutral
+        elif old_stance != speaker_stance:
+            new_stance = "neutral"
+        # If we already agree, no change
+        else:
+            return
+            
+        # Record stance change
+        self.current_stance = new_stance
+        self.memory.record_stance_change(
+            self.active_debate_topic,
+            old_stance,
+            new_stance,
+            f"Persuaded by {event.speaker.get('name')}'s speech",
+            event.event_id
+        )
 ```
 
 ## Debate Management
@@ -380,44 +781,55 @@ async def _generate_and_publish_interjection(self, event: SpeechEvent) -> None:
 The debate lifecycle is managed by the `DebateManager`:
 
 ```python
-async def conduct_debate(self, topic, senators, environment=None):
-    """Conduct a full debate on the given topic."""
-    # Start the debate
-    await self.start_debate(topic, senators)
+async def start_debate(self, topic: str, senators: List[Dict[str, Any]]) -> None:
+    """Start a new debate on the given topic."""
+    if self.debate_in_progress:
+        logger.warning("Attempt to start debate while another is in progress")
+        return
+        
+    self.debate_in_progress = True
+    self.current_debate_topic = topic
+    self.registered_speakers = senators.copy()
     
-    # Track all speeches for return value
-    all_speeches = []
+    # Publish debate start event
+    debate_start_event = DebateEvent(
+        debate_event_type=DebateEventType.DEBATE_START,
+        topic=topic,
+        metadata={
+            "participant_count": len(senators),
+            "participants": [s.get("name", "Unknown") for s in senators]
+        }
+    )
+    await self.event_bus.publish(debate_start_event)
     
-    # Let each senator speak
-    for senator in senators:
-        # Set as current speaker
-        self.current_speaker = senator
-        await self.next_speaker()
+    logger.info(f"Debate started on topic: {topic} with {len(senators)} participants")
+```
+
+```python
+async def end_debate(self) -> None:
+    """End the current debate."""
+    if not self.debate_in_progress:
+        logger.warning("Attempt to end debate when none is in progress")
+        return
         
-        # Generate the speech
-        latin_content = f"Latin speech by {senator.get('name')} on {topic}"
-        english_content = f"English speech by {senator.get('name')} on {topic}"
-        stance = random.choice(["support", "oppose", "neutral"])
-        
-        # Publish the speech event
-        speech_event = await self.publish_speech(
-            speaker=senator,
-            topic=topic,
-            latin_content=latin_content,
-            english_content=english_content,
-            stance=stance
-        )
-        
-        # Add to return value
-        all_speeches.append(speech_data)
-        
-        # Pause to allow reactions and interjections
-        await asyncio.sleep(1)
-        
-    # End the debate
-    await self.end_debate()
+    # Publish debate end event
+    debate_end_event = DebateEvent(
+        debate_event_type=DebateEventType.DEBATE_END,
+        topic=self.current_debate_topic,
+        metadata={
+            "duration": "unknown",  # Could track actual duration if needed
+            "participant_count": len(self.registered_speakers)
+        }
+    )
+    await self.event_bus.publish(debate_end_event)
     
-    return all_speeches
+    # Reset debate state
+    self.debate_in_progress = False
+    self.current_debate_topic = None
+    self.current_speaker = None
+    self.registered_speakers = []
+    
+    logger.info("Debate ended")
 ```
 
 ### Speaker Management
@@ -425,7 +837,15 @@ async def conduct_debate(self, topic, senators, environment=None):
 The `DebateManager` manages the speaker queue:
 
 ```python
-async def next_speaker(self):
+async def register_speaker(self, senator: Dict[str, Any]) -> None:
+    """Register a senator to speak in the debate."""
+    if senator not in self.registered_speakers:
+        self.registered_speakers.append(senator)
+        logger.debug(f"Registered speaker: {senator.get('name', 'Unknown')}")
+```
+
+```python
+async def next_speaker(self) -> Optional[Dict[str, Any]]:
     """Get the next speaker in the debate."""
     if not self.registered_speakers:
         return None
@@ -451,10 +871,10 @@ async def next_speaker(self):
 
 ### Interruption Handling
 
-The `DebateManager` handles interruptions based on senator rank:
+The `DebateManager` handles interruptions during speeches:
 
 ```python
-async def handle_interjection(self, event: InterjectionEvent):
+async def handle_interjection(self, event: InterjectionEvent) -> None:
     """Handle an interjection event."""
     if not self.debate_in_progress or not self.current_speaker:
         logger.warning("Interjection received but no debate in progress")
@@ -471,285 +891,23 @@ async def handle_interjection(self, event: InterjectionEvent):
     if interjector_rank == speaker_rank and event.interjection_type == InterjectionType.PROCEDURAL:
         allow_interruption = True
         
+    # Log the interjection
+    logger.info(
+        f"Interjection from {event.interjector.get('name')}: "
+        f"{event.interjection_type.value} - Allowed: {allow_interruption}"
+    )
+    
     # If allowed, display the interjection
     if allow_interruption:
+        # Display the interjection (this would integrate with the UI)
+        # For now, we'll just log it
         logger.info(f"INTERJECTION: {event.english_content}")
 ```
 
-## Testing the Event System
+### Debate Coordination
 
-### Unit Testing
-
-Unit tests focus on individual components:
+The `DebateManager` can conduct a full debate:
 
 ```python
-def test_event_bus_subscription():
-    """Test that subscribers receive events they subscribe to."""
-    event_bus = EventBus()
-    mock_handler = MagicMock()
-    
-    # Subscribe to event type
-    event_bus.subscribe("test_event", mock_handler)
-    
-    # Create and publish event
-    event = Event(event_type="test_event")
-    asyncio.run(event_bus.publish(event))
-    
-    # Check that handler was called
-    mock_handler.assert_called_once_with(event)
-```
-
-### Integration Testing
-
-Integration tests verify that components work together:
-
-```python
-@pytest.mark.asyncio
-async def test_speech_event_reactions(debate_manager, senator_agents, event_bus):
-    """Test that speech events trigger reactions from other senators."""
-    # Patch methods to ensure deterministic behavior
-    for agent in senator_agents:
-        agent._should_react_to_speech = AsyncMock(return_value=True)
-        
-    # Start debate
-    topic = "Whether Rome should go to war with Carthage"
-    senators = [agent.senator for agent in senator_agents]
-    await debate_manager.start_debate(topic, senators)
-    
-    # Reset the publish method to track new calls
-    event_bus.publish = AsyncMock(wraps=event_bus.publish)
-    
-    # Get the first speaking senator and others
-    speaker_agent = senator_agents[0]
-    
-    # Publish a speech
-    speech_event = await debate_manager.publish_speech(
-        speaker=speaker_agent.senator,
-        topic=topic,
-        latin_content="Test speech",
-        english_content="Test speech",
-        stance="support"
-    )
-    
-    # Count reaction events published
-    reaction_count = 0
-    for call_args in event_bus.publish.call_args_list:
-        if isinstance(call_args[0][0], ReactionEvent):
-            reaction_count += 1
-    
-    # Should have reactions from listening agents
-    assert reaction_count == len(senator_agents) - 1
-```
-
-### Scenario Testing
-
-Scenario tests verify complete workflows:
-
-```python
-@pytest.mark.asyncio
-async def test_full_debate_cycle(debate_manager, senator_agents, event_bus):
-    """Test a full debate cycle from start to finish with all components."""
-    # Setup agents with realistic behavior
-    for agent in senator_agents:
-        agent._should_react_to_speech = AsyncMock(side_effect=lambda event: random.random() < 0.5)
-        agent._should_interject = AsyncMock(side_effect=lambda event: random.random() < 0.2)
-        
-    # Track published events
-    debate_events = []
-    speech_events = []
-    reaction_events = []
-    interjection_events = []
-    
-    # Replace publish with a version that tracks events
-    original_publish = event_bus.publish
-    
-    async def tracking_publish(event):
-        if isinstance(event, DebateEvent):
-            debate_events.append(event)
-        elif isinstance(event, SpeechEvent):
-            speech_events.append(event)
-        elif isinstance(event, ReactionEvent):
-            reaction_events.append(event)
-        elif isinstance(event, InterjectionEvent):
-            interjection_events.append(event)
-            
-        return await original_publish(event)
-        
-    event_bus.publish = tracking_publish
-    
-    # Conduct the debate
-    topic = "Whether Rome should go to war with Carthage"
-    senators = [agent.senator for agent in senator_agents]
-    await debate_manager.conduct_debate(topic, senators)
-    
-    # Verify expected events were published
-    assert len(debate_events) >= 2  # Start and end events
-    assert len(speech_events) == len(senators)  # One speech per senator
-    assert len(reaction_events) > 0  # Some reactions occurred
-```
-
-## Extending the System
-
-### Adding New Event Types
-
-To add a new event type:
-
-1. Create a new class that extends `Event`
-2. Define a unique `TYPE` class variable
-3. Implement `__init__` and `to_dict` methods
-4. Add any type-specific properties and methods
-
-Example:
-
-```python
-class VoteEvent(Event):
-    """Event representing a vote cast by a senator."""
-    
-    TYPE = "vote"
-    
-    def __init__(self, senator, topic, vote_value, metadata=None):
-        super().__init__(
-            event_type=self.TYPE,
-            source=senator,
-            metadata=metadata or {}
-        )
-        self.senator = senator
-        self.topic = topic
-        self.vote_value = vote_value
-        
-        # Add vote-specific metadata
-        self.metadata.update({
-            "topic": topic,
-            "vote_value": vote_value,
-            "senator_name": senator.get("name", "Unknown"),
-            "senator_faction": senator.get("faction", "Unknown")
-        })
-        
-    def to_dict(self):
-        """Convert to dictionary, including vote-specific fields."""
-        data = super().to_dict()
-        data.update({
-            "senator": {
-                "id": self.senator.get("id"),
-                "name": self.senator.get("name"),
-                "faction": self.senator.get("faction")
-            },
-            "topic": self.topic,
-            "vote_value": self.vote_value
-        })
-        return data
-```
-
-### Creating Custom Handlers
-
-To create a custom event handler:
-
-1. Create a class that implements the `EventHandler` protocol
-2. Implement the `handle_event` method
-3. Subscribe the handler to relevant event types
-
-Example:
-
-```python
-class VoteRecorder:
-    """Records votes cast by senators."""
-    
-    def __init__(self, event_bus):
-        self.event_bus = event_bus
-        self.votes = {}
-        
-        # Subscribe to vote events
-        self.event_bus.subscribe(VoteEvent.TYPE, self.handle_event)
-        
-    async def handle_event(self, event):
-        """Handle a vote event."""
-        if event.event_type != VoteEvent.TYPE:
-            return
-            
-        # Record the vote
-        topic = event.topic
-        senator_name = event.senator.get("name", "Unknown")
-        vote_value = event.vote_value
-        
-        if topic not in self.votes:
-            self.votes[topic] = {}
-            
-        self.votes[topic][senator_name] = vote_value
-        
-        # Log the vote
-        logger.info(f"Vote recorded: {senator_name} voted {vote_value} on {topic}")
-```
-
-### Modifying Debate Behavior
-
-To modify debate behavior:
-
-1. Extend the `DebateManager` class
-2. Override methods to implement custom behavior
-3. Use the custom manager in place of the standard one
-
-Example:
-
-```python
-class EnhancedDebateManager(DebateManager):
-    """Enhanced debate manager with additional features."""
-    
-    async def handle_interjection(self, event: InterjectionEvent):
-        """Enhanced interjection handling with faction considerations."""
-        if not self.debate_in_progress or not self.current_speaker:
-            logger.warning("Interjection received but no debate in progress")
-            return
-            
-        # Check if the interjection should be allowed based on rank
-        interjector_rank = event.interjector.get("rank", 0)
-        speaker_rank = self.current_speaker.get("rank", 0)
-        
-        # Higher rank can always interrupt
-        allow_interruption = interjector_rank > speaker_rank
-        
-        # Equal rank can interrupt for procedural matters
-        if interjector_rank == speaker_rank and event.interjection_type == InterjectionType.PROCEDURAL:
-            allow_interruption = True
-            
-        # Same faction members are less likely to interrupt each other
-        if event.interjector.get("faction") == self.current_speaker.get("faction"):
-            # Only allow if it's a supportive or informational interjection
-            if event.interjection_type not in [InterjectionType.SUPPORT, InterjectionType.INFORMATIONAL]:
-                allow_interruption = False
-                
-        # If allowed, display the interjection
-        if allow_interruption:
-            logger.info(f"INTERJECTION: {event.english_content}")
-```
-
-## Best Practices
-
-### Event Design
-
-When designing events:
-
-1. **Keep events focused**: Each event should represent a single, specific occurrence
-2. **Include necessary context**: Events should contain all information needed by handlers
-3. **Use meaningful metadata**: Metadata should provide additional context for handlers
-4. **Consider serialization**: Events should be serializable for persistence or network transmission
-5. **Use appropriate priorities**: Set event priorities based on importance and urgency
-
-### Performance Considerations
-
-To optimize performance:
-
-1. **Limit event history**: Keep event history size reasonable to avoid memory issues
-2. **Use efficient event filtering**: Handlers should quickly determine if they need to process an event
-3. **Batch event processing**: Process multiple events in batches when possible
-4. **Avoid blocking operations**: Use async/await for I/O-bound operations
-5. **Profile event handling**: Identify and optimize slow event handlers
-
-### Debugging Tips
-
-When debugging the event system:
-
-1. **Use verbose logging**: Enable DEBUG level logging to see all event activity
-2. **Inspect event history**: Examine the event bus history to see recent events
-3. **Add debug subscribers**: Create temporary subscribers that log all events of a specific type
-4. **Use mock handlers**: Replace real handlers with mocks for testing
-5. **Trace event flow**: Follow the path of events through the system to identify issues
+async def conduct_debate(self, topic: str, senators: List[Dict[str, Any]], environment: Optional[Dict[str, Any]] = None) -> None:
+    """
