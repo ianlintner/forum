@@ -301,3 +301,86 @@ class RelationshipImpactItem(MemoryBase):
             tags=data.get("tags", []),
             emotional_impact=data.get("emotional_impact", 0.0)
         )
+
+
+class RelationshipMemoryItem(MemoryBase):
+    """
+    Memory of a relationship between two senators of a specific type.
+    
+    Stores details about the relationship value, type, and context.
+    """
+    
+    def __init__(
+        self,
+        senator_id: str,
+        target_senator_id: str,
+        relationship_type: str,  # "political", "personal", "mentor", "rival", "family"
+        relationship_value: float,
+        timestamp: Optional[datetime.datetime] = None,
+        importance: float = 0.6,
+        decay_rate: float = 0.05,
+        tags: Optional[List[str]] = None,
+        emotional_impact: float = 0.0,
+        context: str = ""
+    ):
+        """
+        Initialize a relationship memory item.
+        
+        Args:
+            senator_id: ID of the senator who has this relationship
+            target_senator_id: ID of the target senator in the relationship
+            relationship_type: Type of relationship (political, personal, etc.)
+            relationship_value: Value of the relationship (-1.0 to 1.0)
+            timestamp: When the relationship was recorded/updated
+            importance: How important the relationship is
+            decay_rate: How quickly the memory fades
+            tags: List of tags for categorizing the memory
+            emotional_impact: Emotional significance
+            context: Context or reason for the relationship value
+        """
+        # Add relationship to tags if not already present
+        tags = tags or []
+        if "relationship" not in tags:
+            tags.append("relationship")
+        if relationship_type not in tags:
+            tags.append(relationship_type)
+        if target_senator_id not in tags:
+            tags.append(target_senator_id)
+            
+        super().__init__(timestamp, importance, decay_rate, tags, emotional_impact)
+        self.senator_id = senator_id
+        self.target_senator_id = target_senator_id
+        self.relationship_type = relationship_type
+        self.relationship_value = relationship_value
+        self.context = context
+        
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary representation."""
+        data = super().to_dict()
+        data.update({
+            "senator_id": self.senator_id,
+            "target_senator_id": self.target_senator_id,
+            "relationship_type": self.relationship_type,
+            "relationship_value": self.relationship_value,
+            "context": self.context
+        })
+        return data
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'RelationshipMemoryItem':
+        """Create from dictionary representation."""
+        # Parse timestamp from ISO format
+        timestamp = datetime.datetime.fromisoformat(data["timestamp"])
+        
+        return cls(
+            senator_id=data["senator_id"],
+            target_senator_id=data["target_senator_id"],
+            relationship_type=data["relationship_type"],
+            relationship_value=data["relationship_value"],
+            timestamp=timestamp,
+            importance=data.get("importance", 0.6),
+            decay_rate=data.get("decay_rate", 0.05),
+            tags=data.get("tags", []),
+            emotional_impact=data.get("emotional_impact", 0.0),
+            context=data.get("context", "")
+        )

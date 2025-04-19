@@ -9,13 +9,14 @@ enabling senators to observe, listen to, and react to events in their environmen
 from .base import Event, EventHandler
 from .event_bus import EventBus
 from .debate_events import (
-    DebateEvent, 
+    DebateEvent,
     DebateEventType,
-    SpeechEvent, 
-    ReactionEvent, 
+    SpeechEvent,
+    ReactionEvent,
     InterjectionEvent,
     InterjectionType
 )
+from .relationship_events import RelationshipChangeEvent
 from .debate_manager import DebateManager
 
 __all__ = [
@@ -29,4 +30,5 @@ __all__ = [
     'InterjectionEvent',
     'InterjectionType',
     'DebateManager',
+    'RelationshipChangeEvent',
 ]
