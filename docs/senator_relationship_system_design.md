@@ -1,8 +1,36 @@
 # Senator Relationship System Design
 
+**Author:** Documentation Team  
+**Version:** 2.0.0  
+**Date:** April 19, 2025
+
+## Table of Contents
+
+- [Executive Summary](#executive-summary)
+- [1. Current Limitations](#1-current-limitations)
+- [2. Proposed Architecture](#2-proposed-architecture)
+- [3. Core Components](#3-core-components)
+  - [3.1 Relationship Memory Item](#31-relationship-memory-item)
+  - [3.2 Relationship Change Event](#32-relationship-change-event)
+  - [3.3 Relationship Manager](#33-relationship-manager)
+  - [3.4 Integration with Senator Agent](#34-integration-with-senator-agent)
+- [4. Relationship Decay Mechanism](#4-relationship-decay-mechanism)
+  - [4.1 Type-Specific Decay Rates](#41-type-specific-decay-rates)
+  - [4.2 Decay Visualization](#42-decay-visualization)
+  - [4.3 Decay Implementation](#43-decay-implementation)
+- [5. Example Usage Scenarios](#5-example-usage-scenarios)
+  - [5.1 Speech Reaction](#51-speech-reaction)
+  - [5.2 Vote Alignment](#52-vote-alignment)
+  - [5.3 Relationship-based Decision Making](#53-relationship-based-decision-making)
+- [6. Data Schema for Relationship Storage](#6-data-schema-for-relationship-storage)
+- [7. Implementation Steps](#7-implementation-steps)
+- [8. Conclusion](#8-conclusion)
+
 ## Executive Summary
 
 This document outlines a comprehensive design for an updated senator relationship system in the Roman Senate simulation. The new system leverages the recently added memory persistence, event-driven architecture, and memory indexing capabilities to create a more nuanced and dynamic representation of relationships between senators.
+
+The relationship system models the complex web of political and personal connections that existed in the Roman Senate, where alliances, rivalries, mentorships, and family ties all played crucial roles in political decision-making. By implementing this system, the simulation will achieve greater realism and dynamic behavior, with senators making decisions influenced by their relationships with others.
 
 ## 1. Current Limitations
 
@@ -16,6 +44,8 @@ The current relationship system has several limitations:
 - **Retrieval Limitations**: No specialized queries for relationship data and inefficient use of the memory indexing system.
 
 ## 2. Proposed Architecture
+
+The proposed architecture integrates the relationship system with the existing event system, memory persistence, and senator agent components:
 
 ```mermaid
 graph TD
@@ -50,9 +80,20 @@ graph TD
     end
 ```
 
+This architecture provides:
+
+1. **Multi-dimensional Relationships**: Different types of relationships with varying characteristics
+2. **Event-Driven Updates**: Relationships change in response to simulation events
+3. **Persistent Storage**: Relationship data is stored in the memory system
+4. **Time-Based Decay**: Relationships naturally decay over time
+5. **Decision Influence**: Relationships affect senator decision-making
+6. **Historical Context**: Each relationship change is stored with context
+
 ## 3. Core Components
 
 ### 3.1 Relationship Memory Item
+
+The `RelationshipMemoryItem` class extends the base `MemoryBase` class to store relationship data:
 
 ```python
 class RelationshipMemoryItem(MemoryBase):
@@ -119,7 +160,16 @@ class RelationshipMemoryItem(MemoryBase):
         )
 ```
 
+Key features:
+- Stores relationship data between two senators
+- Includes relationship type and value
+- Provides context for why the relationship has this value
+- Integrates with the memory system for persistence
+- Uses tags for efficient querying
+
 ### 3.2 Relationship Change Event
+
+The `RelationshipChangeEvent` class extends the base `Event` class to notify the system of relationship changes:
 
 ```python
 class RelationshipChangeEvent(Event):
@@ -159,7 +209,16 @@ class RelationshipChangeEvent(Event):
         }
 ```
 
+Key features:
+- Notifies the system when a relationship changes
+- Includes both old and new values
+- Provides the reason for the change
+- Links back to the source event that caused the change
+- Includes metadata for easy access to event details
+
 ### 3.3 Relationship Manager
+
+The `RelationshipManager` class is the central component that manages relationships for a senator:
 
 ```python
 class RelationshipManager:
@@ -190,400 +249,115 @@ class RelationshipManager:
         "rival": 0.05,      # Rival relationships moderately stable
         "family": 0.01      # Family connections extremely stable
     }
-    
-    def __init__(
-        self,
-        senator_id: str,
-        event_bus: EventBus,
-        memory: EnhancedEventMemory
-    ):
-        self.senator_id = senator_id
-        self.event_bus = event_bus
-        self.memory = memory
-        
-        # Cache of current relationship values for quick access
-        self.relationship_cache = {}
-        for rel_type in self.RELATIONSHIP_TYPES:
-            self.relationship_cache[rel_type] = {}
-            
-        # Initialize from memory
-        self._load_relationships_from_memory()
-        
-        # Register for events
-        self._register_event_handlers()
-    
-    def get_relationship(
-        self,
-        target_senator_id: str,
-        relationship_type: Optional[str] = None
-    ) -> Union[float, Dict[str, float]]:
-        """
-        Get relationship value(s) with another senator.
-        
-        Args:
-            target_senator_id: ID of the target senator
-            relationship_type: Type of relationship to get, or None for all types
-            
-        Returns:
-            Float value if type specified, dict of {type: value} if not
-        """
-        if relationship_type:
-            return self.relationship_cache[relationship_type].get(target_senator_id, 0.0)
-        
-        return {
-            rel_type: self.relationship_cache[rel_type].get(target_senator_id, 0.0)
-            for rel_type in self.RELATIONSHIP_TYPES
-        }
-    
-    def update_relationship(
-        self,
-        target_senator_id: str,
-        relationship_type: str,
-        change_value: float,
-        reason: str,
-        source_event_id: Optional[str] = None,
-        publish_event: bool = True
-    ) -> float:
-        """
-        Update relationship with another senator.
-        
-        Args:
-            target_senator_id: ID of the target senator
-            relationship_type: Type of relationship to update
-            change_value: Value to add to relationship
-            reason: Reason for the change
-            source_event_id: Optional ID of event causing change
-            publish_event: Whether to publish a RelationshipChangeEvent
-            
-        Returns:
-            New relationship value
-        """
-        # Get current value
-        old_value = self.relationship_cache[relationship_type].get(target_senator_id, 0.0)
-        
-        # Calculate new value (bounded between -1.0 and 1.0)
-        new_value = max(-1.0, min(1.0, old_value + change_value))
-        
-        # Update cache
-        self.relationship_cache[relationship_type][target_senator_id] = new_value
-        
-        # Create relationship memory item
-        rel_memory = RelationshipMemoryItem(
-            senator_id=self.senator_id,
-            target_senator_id=target_senator_id,
-            relationship_type=relationship_type,
-            relationship_value=new_value,
-            timestamp=datetime.datetime.now(),
-            importance=0.6 + abs(change_value) * 0.4,  # Higher change = higher importance
-            decay_rate=self.DECAY_RATES[relationship_type],
-            emotional_impact=change_value,
-            context=reason
-        )
-        
-        # Store in memory
-        self.memory.memory_index.add_memory(rel_memory)
-        
-        # Publish event if requested
-        if publish_event and abs(new_value - old_value) > 0.001:
-            event = RelationshipChangeEvent(
-                senator_id=self.senator_id,
-                target_senator_id=target_senator_id,
-                relationship_type=relationship_type,
-                old_value=old_value,
-                new_value=new_value,
-                change_value=change_value,
-                reason=reason,
-                source_event_id=source_event_id
-            )
-            self.event_bus.publish(event)
-            
-        return new_value
-    
-    def apply_time_decay(self, days_elapsed: int):
-        """
-        Apply time-based decay to relationships.
-        
-        Args:
-            days_elapsed: Number of days that have passed
-        """
-        # For each relationship type and target
-        for rel_type in self.RELATIONSHIP_TYPES:
-            decay_rate = self.DECAY_RATES[rel_type]
-            
-            for target_id, value in self.relationship_cache[rel_type].items():
-                if abs(value) < 0.01:
-                    continue  # Skip near-zero relationships
-                    
-                # Convert monthly rate to daily and calculate decay amount
-                daily_decay = decay_rate / 30  # Monthly rate to daily
-                total_decay = daily_decay * days_elapsed
-                
-                # Calculate decay direction (relationships trend toward neutral)
-                decay_direction = 1.0 if value > 0 else -1.0
-                decay_amount = total_decay * decay_direction
-                
-                # Calculate new value
-                new_value = value - decay_amount
-                
-                # Check if the decay crossed zero (avoid oscillation)
-                if (value > 0 and new_value < 0) or (value < 0 and new_value > 0):
-                    new_value = 0.0
-                    
-                # Only update if significant change
-                if abs(new_value - value) > 0.01:
-                    # Update the relationship cache directly
-                    self.relationship_cache[rel_type][target_id] = new_value
-                    
-                    # Only create memory items for significant decay
-                    if abs(new_value - value) > 0.05:
-                        # Create a relationship memory item with low importance
-                        rel_memory = RelationshipMemoryItem(
-                            senator_id=self.senator_id,
-                            target_senator_id=target_id,
-                            relationship_type=rel_type,
-                            relationship_value=new_value,
-                            timestamp=datetime.datetime.now(),
-                            importance=0.3,  # Lower importance for decay events
-                            decay_rate=self.DECAY_RATES[rel_type],
-                            emotional_impact=0.0,  # Neutral emotional impact for natural decay
-                            context=f"Natural relationship decay over {days_elapsed} days"
-                        )
-                        
-                        # Add to memory
-                        self.memory.memory_index.add_memory(rel_memory)
-    
-    def get_relationship_history(
-        self,
-        target_senator_id: str,
-        relationship_type: Optional[str] = None,
-        limit: int = 10
-    ) -> List[RelationshipMemoryItem]:
-        """
-        Get history of relationship changes.
-        
-        Args:
-            target_senator_id: ID of the target senator
-            relationship_type: Optional type to filter by
-            limit: Maximum number of items to return
-            
-        Returns:
-            List of relationship memory items, newest first
-        """
-        # Prepare query criteria
-        criteria = {
-            "tags": ["relationship", target_senator_id]
-        }
-        
-        if relationship_type:
-            criteria["tags"].append(relationship_type)
-            
-        # Query memory index
-        memories = self.memory.memory_index.query(criteria)
-        
-        # Sort by timestamp (newest first) and limit
-        sorted_memories = sorted(
-            memories, 
-            key=lambda m: m.timestamp,
-            reverse=True
-        )
-        
-        return sorted_memories[:limit]
-        
-    def get_overall_relationship(self, target_senator_id: str) -> float:
-        """
-        Calculate an overall relationship score across all types.
-        
-        Args:
-            target_senator_id: ID of the target senator
-            
-        Returns:
-            Weighted average relationship value
-        """
-        scores = self.get_relationship(target_senator_id)
-        
-        # Weighted average based on importance of each type
-        weights = {
-            "political": 0.3,
-            "personal": 0.3,
-            "mentor": 0.15,
-            "rival": 0.2,
-            "family": 0.05
-        }
-        
-        weighted_sum = sum(scores[t] * weights[t] for t in self.RELATIONSHIP_TYPES)
-        return weighted_sum
-    
-    def _register_event_handlers(self):
-        """Register handlers for events that affect relationships."""
-        self.event_bus.subscribe(SpeechEvent.TYPE, self._handle_speech_event)
-        self.event_bus.subscribe(VoteEvent.TYPE, self._handle_vote_event)
-        self.event_bus.subscribe(ReactionEvent.TYPE, self._handle_reaction_event)
-        self.event_bus.subscribe(InterjectionEvent.TYPE, self._handle_interjection_event)
-        
-    def _handle_speech_event(self, event: SpeechEvent):
-        """Process speech events for relationship impacts."""
-        # Skip own speeches
-        if event.speaker.get("id") == self.senator_id:
-            return
-            
-        speaker_id = event.speaker.get("id")
-        stance = event.stance
-        topic = event.metadata.get("topic", "unknown")
-        
-        # Political impact based on stance alignment
-        if hasattr(self, 'current_stance') and self.current_stance:
-            if self.current_stance == stance:
-                # Agreement strengthens political relationship
-                self.update_relationship(
-                    speaker_id,
-                    "political",
-                    0.05,
-                    f"Agreed with stance on {topic}",
-                    event.event_id
-                )
-            elif self.current_stance != "neutral" and stance != "neutral":
-                # Disagreement weakens political relationship
-                self.update_relationship(
-                    speaker_id,
-                    "political",
-                    -0.05,
-                    f"Disagreed with stance on {topic}",
-                    event.event_id
-                )
-                
-    def _handle_vote_event(self, event: VoteEvent):
-        """Process vote events for relationship impacts."""
-        proposal = event.metadata.get("proposal", "unknown proposal")
-        my_vote = event.votes.get(self.senator_id)
-        
-        if not my_vote:
-            return
-            
-        for senator_id, vote in event.votes.items():
-            if senator_id == self.senator_id:
-                continue
-                
-            if vote == my_vote:
-                # Aligned votes strengthen political relationship
-                self.update_relationship(
-                    senator_id, 
-                    "political",
-                    0.1,  # Significant boost for vote alignment
-                    f"Voted the same way ({vote}) on {proposal}",
-                    event.event_id
-                )
-            else:
-                # Opposed votes affect political relationship
-                self.update_relationship(
-                    senator_id,
-                    "political",
-                    -0.08,  # Notable decrease for opposed votes
-                    f"Voted differently on {proposal} (I: {my_vote}, They: {vote})",
-                    event.event_id
-                )
-                
-    def _handle_reaction_event(self, event: ReactionEvent):
-        """Process reaction events for relationship impacts."""
-        # Skip own reactions
-        if event.reactor.get("id") == self.senator_id:
-            return
-            
-        reactor_id = event.reactor.get("id")
-        reaction_type = event.reaction_type
-        target_event_id = event.target_event.event_id
-        
-        # Check if this is a reaction to our speech
-        if hasattr(event.target_event, "speaker") and event.target_event.speaker.get("id") == self.senator_id:
-            # Someone reacted to our speech
-            if reaction_type in ["agreement", "interest"]:
-                # Positive reaction strengthens personal relationship
-                self.update_relationship(
-                    reactor_id,
-                    "personal",
-                    0.05,
-                    f"Reacted positively to my speech ({reaction_type})",
-                    target_event_id
-                )
-            elif reaction_type in ["disagreement", "skepticism"]:
-                # Negative reaction affects personal relationship
-                self.update_relationship(
-                    reactor_id,
-                    "personal",
-                    -0.03,
-                    f"Reacted negatively to my speech ({reaction_type})",
-                    target_event_id
-                )
-                
-    def _handle_interjection_event(self, event: InterjectionEvent):
-        """Process interjection events for relationship impacts."""
-        # Skip own interjections
-        if event.interjector.get("id") == self.senator_id:
-            return
-            
-        interjector_id = event.interjector.get("id")
-        interjection_type = event.interjection_type
-        
-        # If we're the target of the interjection
-        if event.target_speaker.get("id") == self.senator_id:
-            if interjection_type == InterjectionType.SUPPORT:
-                # Support interjection strengthens both relationships
-                self.update_relationship(
-                    interjector_id,
-                    "political",
-                    0.08,
-                    "Supported me during a speech",
-                    event.event_id
-                )
-                self.update_relationship(
-                    interjector_id,
-                    "personal",
-                    0.05,
-                    "Supported me during a speech",
-                    event.event_id
-                )
-            elif interjection_type == InterjectionType.CHALLENGE:
-                # Challenge interjection affects political relationship
-                self.update_relationship(
-                    interjector_id,
-                    "political",
-                    -0.08,
-                    "Challenged me during a speech",
-                    event.event_id
-                )
-            elif interjection_type == InterjectionType.EMOTIONAL:
-                # Emotional interjection affects personal relationship
-                self.update_relationship(
-                    interjector_id,
-                    "personal",
-                    -0.1,
-                    "Made an emotional outburst during my speech",
-                    event.event_id
-                )
-    
-    def _load_relationships_from_memory(self):
-        """Initialize relationship cache from memory."""
-        # Query memory for relationship items
-        memories = self.memory.memory_index.query({"tags": ["relationship"]})
-        
-        # Group by target and type, keeping only the most recent
-        latest_relationships = {}
-        
-        for memory in memories:
-            if not isinstance(memory, RelationshipMemoryItem):
-                continue
-                
-            key = (memory.target_senator_id, memory.relationship_type)
-            
-            if key not in latest_relationships or memory.timestamp > latest_relationships[key].timestamp:
-                latest_relationships[key] = memory
-                
-        # Populate the cache
-        for key, memory in latest_relationships.items():
-            target_id, rel_type = key
-            self.relationship_cache[rel_type][target_id] = memory.relationship_value
 ```
 
+The `RelationshipManager` provides methods for:
+
+1. **Getting Relationships**:
+   ```python
+   def get_relationship(
+       self,
+       target_senator_id: str,
+       relationship_type: Optional[str] = None
+   ) -> Union[float, Dict[str, float]]:
+       """
+       Get relationship value(s) with another senator.
+       
+       Args:
+           target_senator_id: ID of the target senator
+           relationship_type: Type of relationship to get, or None for all types
+           
+       Returns:
+           Float value if type specified, dict of {type: value} if not
+       """
+   ```
+
+2. **Updating Relationships**:
+   ```python
+   def update_relationship(
+       self,
+       target_senator_id: str,
+       relationship_type: str,
+       change_value: float,
+       reason: str,
+       source_event_id: Optional[str] = None,
+       publish_event: bool = True
+   ) -> float:
+       """
+       Update relationship with another senator.
+       
+       Args:
+           target_senator_id: ID of the target senator
+           relationship_type: Type of relationship to update
+           change_value: Value to add to relationship
+           reason: Reason for the change
+           source_event_id: Optional ID of event causing change
+           publish_event: Whether to publish a RelationshipChangeEvent
+           
+       Returns:
+           New relationship value
+       """
+   ```
+
+3. **Applying Time Decay**:
+   ```python
+   def apply_time_decay(self, days_elapsed: int):
+       """
+       Apply time-based decay to relationships.
+       
+       Args:
+           days_elapsed: Number of days that have passed
+       """
+   ```
+
+4. **Getting Relationship History**:
+   ```python
+   def get_relationship_history(
+       self,
+       target_senator_id: str,
+       relationship_type: Optional[str] = None,
+       limit: int = 10
+   ) -> List[RelationshipMemoryItem]:
+       """
+       Get history of relationship changes.
+       
+       Args:
+           target_senator_id: ID of the target senator
+           relationship_type: Optional type to filter by
+           limit: Maximum number of items to return
+           
+       Returns:
+           List of relationship memory items, newest first
+       """
+   ```
+
+5. **Calculating Overall Relationship**:
+   ```python
+   def get_overall_relationship(self, target_senator_id: str) -> float:
+       """
+       Calculate an overall relationship score across all types.
+       
+       Args:
+           target_senator_id: ID of the target senator
+           
+       Returns:
+           Weighted average relationship value
+       """
+   ```
+
+6. **Event Handling**:
+   ```python
+   def _register_event_handlers(self):
+       """Register handlers for events that affect relationships."""
+       self.event_bus.subscribe(SpeechEvent.TYPE, self._handle_speech_event)
+       self.event_bus.subscribe(VoteEvent.TYPE, self._handle_vote_event)
+       self.event_bus.subscribe(ReactionEvent.TYPE, self._handle_reaction_event)
+       self.event_bus.subscribe(InterjectionEvent.TYPE, self._handle_interjection_event)
+   ```
+
 ### 3.4 Integration with Senator Agent
+
+The `RelationshipAwareSenatorAgent` class extends the `EnhancedSenatorAgent` to use relationships in decision-making:
 
 ```python
 class RelationshipAwareSenatorAgent(EnhancedSenatorAgent):
@@ -655,28 +429,13 @@ class RelationshipAwareSenatorAgent(EnhancedSenatorAgent):
             return final_stance, reasoning
             
         return base_stance, base_reasoning
-        
-    def _find_key_senators_for_topic(self, topic: str) -> Dict[str, str]:
-        """
-        Find key senators with known stances on a topic.
-        
-        Args:
-            topic: The topic to find stances for
-            
-        Returns:
-            Dictionary mapping senator IDs to stances
-        """
-        # In a real implementation, this would query the memory system
-        # for senators who have spoken on this topic
-        # For now, we'll return a simple mock implementation
-        return {}
-        
-    def _get_senator_name(self, senator_id: str) -> str:
-        """Get a senator's name from their ID."""
-        # In a real implementation, this would look up the senator
-        # For now, return a formatted version of the ID
-        return senator_id.replace("senator_", "").replace("_", " ").title()
 ```
+
+Key features:
+- Integrates the relationship manager with the senator agent
+- Uses relationships to influence stance decisions
+- Provides explanations for relationship-influenced decisions
+- Records relationship influences in memory
 
 ## 4. Relationship Decay Mechanism
 
@@ -714,7 +473,15 @@ graph TD
 
 ### 4.3 Decay Implementation
 
-The key implementation is the `apply_time_decay` method that applies appropriate decay based on elapsed time.
+The key implementation is the `apply_time_decay` method that applies appropriate decay based on elapsed time:
+
+1. For each relationship type and target senator:
+   - Calculate the daily decay rate from the monthly rate
+   - Calculate the total decay amount based on days elapsed
+   - Determine decay direction (relationships trend toward neutral)
+   - Apply decay and ensure it doesn't cross zero
+   - Update the relationship cache
+   - Create a memory item for significant decay
 
 ## 5. Example Usage Scenarios
 
@@ -733,6 +500,13 @@ speech_event = SpeechEvent(
 # The relationship manager processes this event through the _handle_speech_event method
 ```
 
+When a senator delivers a speech, the relationship manager:
+1. Checks if the speaker is the senator itself (skips if so)
+2. Gets the speaker's stance and topic
+3. Compares with the senator's own stance
+4. Updates political relationships based on stance alignment
+5. Creates relationship memory items with context
+
 ### 5.2 Vote Alignment
 
 ```python
@@ -749,6 +523,13 @@ vote_event = VoteEvent(
 # The relationship manager processes this event through the _handle_vote_event method
 ```
 
+When senators vote on a proposal, the relationship manager:
+1. Gets the senator's own vote
+2. Compares with other senators' votes
+3. Strengthens political relationships for aligned votes
+4. Weakens political relationships for opposed votes
+5. Creates relationship memory items with context
+
 ### 5.3 Relationship-based Decision Making
 
 ```python
@@ -763,6 +544,14 @@ if self.relationship_manager.get_overall_relationship("senator_caesar") > 0.7:
         final_stance = "support"
         reason = "While I'm personally neutral, I support this due to my alliance with Caesar."
 ```
+
+When deciding a stance on a topic, the relationship-aware senator:
+1. Gets the base stance from principle alignment
+2. Finds key senators with opinions on the topic
+3. Calculates relationship influence for each key senator
+4. Applies relationship influence to the base stance
+5. Updates reasoning to explain relationship influences
+6. Records the relationship influence in memory
 
 ## 6. Data Schema for Relationship Storage
 
@@ -783,6 +572,14 @@ Each relationship is stored as a `RelationshipMemoryItem` in the memory system:
 }
 ```
 
+This schema:
+- Identifies both senators in the relationship
+- Specifies the relationship type and value
+- Includes a timestamp for historical tracking
+- Provides importance and decay rate for memory management
+- Uses tags for efficient querying
+- Includes context explaining why the relationship has this value
+
 ## 7. Implementation Steps
 
 1. Create the `RelationshipMemoryItem` class that inherits from `MemoryBase`
@@ -799,3 +596,13 @@ Each relationship is stored as a `RelationshipMemoryItem` in the memory system:
 ## 8. Conclusion
 
 This design provides a comprehensive approach to enhancing the senator relationship system, leveraging the new features while maintaining backward compatibility. The system will make senator interactions more nuanced, persistent, and historically informed, improving the realism of the simulation.
+
+Key benefits include:
+- More realistic senator behavior influenced by relationships
+- Dynamic relationship changes based on interactions
+- Natural relationship decay over time
+- Persistent relationship data across simulation sessions
+- Rich context for why relationships have certain values
+- Integration with the existing event and memory systems
+
+The implementation follows a modular approach, allowing for future extensions and refinements as the simulation evolves.

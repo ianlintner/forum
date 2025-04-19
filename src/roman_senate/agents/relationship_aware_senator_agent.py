@@ -15,6 +15,7 @@ from ..utils.llm.base import LLMProvider
 from .enhanced_senator_agent import EnhancedSenatorAgent
 from .relationship_manager import RelationshipManager
 from .memory_persistence_manager import MemoryPersistenceManager
+from .enhanced_event_memory import EnhancedEventMemory
 from ..core.events import (
     Event,
     EventBus,
@@ -43,13 +44,25 @@ class RelationshipAwareSenatorAgent(EnhancedSenatorAgent):
         memory_manager: Optional[MemoryPersistenceManager] = None
     ):
         """Initialize a relationship-aware senator agent."""
-        # Initialize the base EnhancedSenatorAgent
-        super().__init__(
-            senator=senator,
-            llm_provider=llm_provider,
-            event_bus=event_bus,
-            memory_manager=memory_manager
-        )
+        # Initialize with base senator properties
+        self.senator = senator
+        self.llm_provider = llm_provider
+        self.current_stance = None
+        
+        # Generate a unique ID for this senator if not present
+        if "id" not in self.senator:
+            self.senator["id"] = f"senator_{self.senator['name'].lower().replace(' ', '_')}"
+        
+        # Create enhanced memory
+        self.memory = EnhancedEventMemory(senator_id=self.senator["id"])
+        
+        self.event_bus = event_bus
+        self.active_debate_topic = None
+        self.current_speaker = None
+        self.debate_in_progress = False
+        
+        # Memory persistence manager
+        self.memory_manager = memory_manager or MemoryPersistenceManager()
         
         # Initialize the relationship manager
         self.relationship_manager = RelationshipManager(
@@ -57,6 +70,9 @@ class RelationshipAwareSenatorAgent(EnhancedSenatorAgent):
             event_bus=self.event_bus,
             memory=self.memory
         )
+        
+        # Subscribe to relevant event types
+        self.subscribe_to_events()
         
         logger.info(f"Relationship-aware senator agent initialized for {self.name}")
     
@@ -227,7 +243,8 @@ class RelationshipAwareSenatorAgent(EnhancedSenatorAgent):
             "min_strength": 0.3  # Only consider strong memories
         }
         
-        topic_memories = self.memory.memory_index.query(criteria)
+        # Add await here since query might be async
+        topic_memories = await self.memory.memory_index.query(criteria)
         
         # Extract senator stances from memories
         senator_stances = {}
@@ -257,7 +274,7 @@ class RelationshipAwareSenatorAgent(EnhancedSenatorAgent):
         # For now, return a formatted version of the ID
         return senator_id.replace("senator_", "").replace("_", " ").title()
     
-    def apply_time_effects(self, days_elapsed: int) -> None:
+    async def apply_time_effects(self, days_elapsed: int) -> None:
         """
         Apply time-based effects, including relationship decay.
         
@@ -270,3 +287,81 @@ class RelationshipAwareSenatorAgent(EnhancedSenatorAgent):
         # Other time-based effects could be added here
         
         logger.info(f"Applied {days_elapsed} days of time effects for {self.name}")
+        
+    def _load_memory(self):
+        """
+        Load memory from persistence if available.
+        This method is called during initialization.
+        """
+        try:
+            # Try to load memory from persistence
+            loaded_memory = self.memory_manager.load_memory(self.senator["id"])
+            if loaded_memory and isinstance(loaded_memory, EnhancedEventMemory):
+                # Merge the loaded memory with our current memory
+                self.memory.merge_with(loaded_memory)
+                logger.info(f"Loaded memory for {self.name} from persistence")
+            else:
+                logger.info(f"No persistent memory found for {self.name}")
+        except Exception as e:
+            logger.warning(f"Failed to load memory for {self.name}: {e}")
+            
+    def subscribe_to_events(self):
+        """
+        Subscribe to relevant event types.
+        """
+        # Subscribe to speech events to track stances
+        self.event_bus.subscribe("speech", self._handle_speech_event)
+        
+        # Subscribe to debate events to track active topics
+        self.event_bus.subscribe("debate", self._handle_debate_event)
+        
+        # Subscribe to relationship events
+        self.event_bus.subscribe("relationship_change", self._handle_relationship_event)
+        
+        logger.info(f"Senator {self.name} subscribed to events")
+    
+    async def _handle_speech_event(self, event):
+        """
+        Handle speech events.
+        
+        Args:
+            event: The speech event
+        """
+        # Record the speech in memory
+        self.memory.record_event(event)
+        
+        # Consider stance change based on the speech
+        await self._consider_stance_change(event)
+        
+        logger.debug(f"Senator {self.name} processed speech event: {event.event_id}")
+    
+    async def _handle_debate_event(self, event):
+        """
+        Handle debate events.
+        
+        Args:
+            event: The debate event
+        """
+        # Update active debate topic
+        if event.event_subtype == "debate_start":
+            self.active_debate_topic = event.metadata.get("topic")
+            self.debate_in_progress = True
+            logger.debug(f"Senator {self.name} tracking debate on {self.active_debate_topic}")
+        elif event.event_subtype == "debate_end":
+            self.debate_in_progress = False
+            logger.debug(f"Senator {self.name} noted end of debate on {self.active_debate_topic}")
+        # Record the debate event
+        self.memory.record_event(event)
+        
+        
+    def _handle_relationship_event(self, event):
+        """
+        Handle relationship change events.
+        
+        Args:
+            event: The relationship change event
+        """
+        # Only process events that involve this senator
+        if event.senator_id == self.senator["id"] or event.target_senator_id == self.senator["id"]:
+            self.memory.record_event(event)
+            logger.debug(f"Senator {self.name} recorded relationship event: {event.event_id}")

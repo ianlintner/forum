@@ -1,8 +1,8 @@
 # Roman Senate Event System Documentation
 
 **Author:** Documentation Team  
-**Version:** 1.2.0  
-**Date:** April 18, 2025
+**Version:** 1.1.0  
+**Date:** April 19, 2025
 
 ## Overview
 
@@ -56,6 +56,11 @@ This documentation package provides comprehensive information about the Roman Se
 - [Integration Examples](integration_guide.md#case-studies)
 - [Event Extension Examples](extending_events.md#examples)
 
+### Related Systems
+
+- [Relationship System](../relationship_system/index.md) - Documentation for the senator relationship system
+- [Memory System](../memory_system.md) - Documentation for the memory persistence system
+
 ### Troubleshooting
 
 - [Common Issues](test_fixes.md#test-failures-overview)
@@ -86,16 +91,22 @@ flowchart TD
     EB <--> SA1[Senator Agent 1]
     EB <--> SA2[Senator Agent 2]
     EB <--> SA3[Senator Agent 3]
+    EB <--> RM[RelationshipManager]
     
     DM -- "1. Start Debate" --> EB
     SA1 -- "2. Generate Speech" --> DM
     DM -- "3. Publish Speech" --> EB
     EB -- "4. Notify of Speech" --> SA2
     EB -- "4. Notify of Speech" --> SA3
+    EB -- "4. Notify of Speech" --> RM
     SA2 -- "5. React to Speech" --> EB
     SA3 -- "6. Interject" --> EB
     EB -- "7. Notify of Interjection" --> DM
     DM -- "8. Handle Interjection" --> SA1
+    RM -- "9. Update Relationships" --> EB
+    EB -- "10. Notify of Relationship Change" --> SA1
+    EB -- "10. Notify of Relationship Change" --> SA2
+    EB -- "10. Notify of Relationship Change" --> SA3
 ```
 
 ## Event Types
@@ -108,6 +119,8 @@ classDiagram
     Event <|-- SpeechEvent
     Event <|-- ReactionEvent
     Event <|-- InterjectionEvent
+    Event <|-- VoteEvent
+    Event <|-- RelationshipChangeEvent
     
     class Event {
         +String eventId
@@ -148,6 +161,24 @@ classDiagram
         +String latin_content
         +String english_content
     }
+    
+    class VoteEvent {
+        +String TYPE = "vote_event"
+        +String proposal
+        +Dict votes
+    }
+    
+    class RelationshipChangeEvent {
+        +String TYPE = "relationship_change"
+        +String senator_id
+        +String target_senator_id
+        +String relationship_type
+        +Float old_value
+        +Float new_value
+        +Float change_value
+        +String reason
+        +String source_event_id
+    }
 ```
 
 ## Recent Enhancements
@@ -158,6 +189,7 @@ The event system has recently undergone several major enhancements:
 2. **Comprehensive Logging System**: Added robust file and console logging
 3. **Event-Driven Architecture**: Implemented a publisher-subscriber system
 4. **Testing Framework**: Created comprehensive tests for the new event system
+5. **Relationship System Integration**: Added relationship events and handlers
 
 ## Getting Started
 
@@ -166,6 +198,9 @@ To quickly see the event system in action:
 ```bash
 # Run the event system demo
 python -m src.roman_senate.examples.event_system_demo
+
+# Run the relationship system demo
+python -m src.roman_senate.examples.enhanced_relationship_demo
 
 # Run a full simulation with verbose logging
 python -m src.roman_senate.cli simulate --verbose
@@ -195,7 +230,7 @@ A: The event system is an event-driven architecture that enables senators to obs
 A: It creates a more realistic and immersive simulation by enabling dynamic interactions between senators, including real-time reactions, interruptions, and position changes.
 
 **Q: What are the main components of the event system?**  
-A: The main components are the EventBus, Event classes, EventDrivenSenatorAgent, DebateManager, and EventMemory.
+A: The main components are the EventBus, Event classes, EventDrivenSenatorAgent, DebateManager, EventMemory, and RelationshipManager.
 
 ### Technical Questions
 
@@ -210,3 +245,6 @@ A: See the [Performance Optimization](extending_events.md#performance-optimizati
 
 **Q: How do I integrate existing code with the event system?**  
 A: See the [Integration Guide](integration_guide.md) for strategies like using compatibility layers, adapters, and feature flags.
+
+**Q: How does the relationship system interact with the event system?**  
+A: The relationship system subscribes to events like speeches, votes, and reactions, and updates relationships accordingly. It also publishes RelationshipChangeEvent when relationships change. See [Relationship System Integration](integration_guide.md#case-study-3-relationship-system-integration).
