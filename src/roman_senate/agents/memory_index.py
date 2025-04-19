@@ -4,12 +4,15 @@ Memory Index Module
 
 This module provides indexing capabilities for memory items to enable
 efficient retrieval based on various criteria.
+
+Part of the Phase 3 Migration: Memory System - Adapting or extending agentic_game_framework.memory
 """
 
-from typing import Dict, List, Any, Set, Optional
+from typing import Dict, List, Any, Set, Optional, Union, Tuple
 import datetime
 from collections import defaultdict
 
+from agentic_game_framework.memory.memory_index import MemoryIndex as FrameworkMemoryIndex
 from .memory_base import MemoryBase
 
 
@@ -23,10 +26,19 @@ class MemoryIndex:
     - By event type
     - By time period
     - By importance
+    - By topic
+    
+    This class adapts the functionality of agentic_game_framework.memory.MemoryIndex
+    while maintaining the specialized functionality needed for the Roman Senate simulation.
     """
     
-    def __init__(self):
-        """Initialize empty indices."""
+    def __init__(self, use_framework_index: bool = True):
+        """
+        Initialize empty indices.
+        
+        Args:
+            use_framework_index: Whether to use the framework's memory index as well
+        """
         # Index by tag
         self.tag_index: Dict[str, List[MemoryBase]] = defaultdict(list)
         
@@ -52,6 +64,10 @@ class MemoryIndex:
         
         # Track all memories for full scans when needed
         self.all_memories: List[MemoryBase] = []
+        
+        # Optional framework memory index for advanced searching
+        self.use_framework_index = use_framework_index
+        self.framework_index = FrameworkMemoryIndex() if use_framework_index else None
     
     def add_memory(self, memory: MemoryBase) -> None:
         """
@@ -90,6 +106,12 @@ class MemoryIndex:
         # Index by topic if applicable
         if hasattr(memory, "topic"):
             self.topic_index[getattr(memory, "topic")].append(memory)
+        
+        # Add to framework index if using it
+        if self.use_framework_index and self.framework_index:
+            # Convert to framework memory item and index it
+            framework_item = memory.to_framework_memory_item()
+            self.framework_index.index_memory(framework_item)
     
     def remove_memory(self, memory: MemoryBase) -> None:
         """
@@ -140,6 +162,10 @@ class MemoryIndex:
             topic = getattr(memory, "topic")
             if memory in self.topic_index[topic]:
                 self.topic_index[topic].remove(memory)
+        
+        # Remove from framework index if using it
+        if self.use_framework_index and self.framework_index:
+            self.framework_index.remove_memory(memory.id)
     
     def update_indices(self) -> None:
         """
@@ -164,11 +190,15 @@ class MemoryIndex:
         self.topic_index.clear()
         self.all_memories.clear()
         
+        # Clear framework index if using it
+        if self.use_framework_index and self.framework_index:
+            self.framework_index.clear()
+        
         # Re-add all memories
         for memory in all_memories:
             self.add_memory(memory)
     
-    def query(self, criteria: Dict[str, Any]) -> List[MemoryBase]:
+    def query(self, criteria: Dict[str, Any], current_time: Optional[datetime.datetime] = None) -> List[MemoryBase]:
         """
         Query memories based on multiple criteria.
         
@@ -182,10 +212,19 @@ class MemoryIndex:
                 - importance_category: One of "core", "long_term", "medium_term", "short_term"
                 - topic: Topic
                 - min_strength: Minimum memory strength
+                - text: Text to search for in content (uses framework index if available)
+            current_time: Optional current time for strength calculations
                 
         Returns:
             List of matching memory items
         """
+        # Check if we can use the framework index for this query
+        if (self.use_framework_index and self.framework_index and 
+            criteria.get("text") and not any(k in criteria for k in ("tags", "senator_name", "event_type", "importance_category", "topic"))):
+            # Simple text query, delegate to framework index
+            return self._framework_text_query(criteria)
+        
+        # Default to our specialized indexing
         candidate_sets: List[Set[MemoryBase]] = []
         
         # Filter by tags if specified
@@ -250,49 +289,95 @@ class MemoryIndex:
         # Apply minimum strength filter if specified
         if "min_strength" in criteria:
             min_strength = criteria["min_strength"]
-            current_time = criteria.get("current_time", datetime.datetime.now())
+            current_time = current_time or datetime.datetime.now()
             candidates = [m for m in candidates if m.get_current_strength(current_time) >= min_strength]
         
         # Sort by relevance if context is provided
         if "context" in criteria:
             context = criteria["context"]
-            candidates.sort(
-                key=lambda m: m.calculate_relevance(context),
-                reverse=True
-            )
-        # Otherwise sort by recency
+            candidates.sort(key=lambda m: m.calculate_relevance(context), reverse=True)
+        # Otherwise sort by recency (newest first)
         else:
-            candidates.sort(
-                key=lambda m: m.timestamp,
-                reverse=True
-            )
+            candidates.sort(key=lambda m: m.timestamp, reverse=True)
+        
+        # Apply limit if specified
+        if "limit" in criteria and criteria["limit"] is not None:
+            limit = criteria["limit"]
+            candidates = candidates[:limit]
         
         return candidates
     
-    def get_memories_by_tag(self, tag: str) -> List[MemoryBase]:
-        """Get all memories with a specific tag."""
-        return self.tag_index.get(tag, [])
-    
-    def get_memories_by_senator(self, senator_name: str) -> List[MemoryBase]:
-        """Get all memories related to a specific senator."""
-        return self.senator_index.get(senator_name, [])
-    
-    def get_memories_by_event_type(self, event_type: str) -> List[MemoryBase]:
-        """Get all memories of a specific event type."""
-        return self.event_type_index.get(event_type, [])
+    def _framework_text_query(self, criteria: Dict[str, Any]) -> List[MemoryBase]:
+        """
+        Perform a text query using the framework index.
+        
+        Args:
+            criteria: Dictionary containing text query criteria
+            
+        Returns:
+            List of matching memory items
+        """
+        if not self.framework_index:
+            return []
+        
+        # Create a query for the framework index
+        framework_query = {}
+        
+        # Add text search
+        if "text" in criteria:
+            framework_query["text"] = criteria["text"]
+        
+        # Add timestamp range if present
+        if "time_start" in criteria:
+            if isinstance(criteria["time_start"], datetime.datetime):
+                framework_query["timestamp_min"] = criteria["time_start"].timestamp()
+            else:
+                framework_query["timestamp_min"] = criteria["time_start"]
+                
+        if "time_end" in criteria:
+            if isinstance(criteria["time_end"], datetime.datetime):
+                framework_query["timestamp_max"] = criteria["time_end"].timestamp()
+            else:
+                framework_query["timestamp_max"] = criteria["time_end"]
+        
+        # Add importance threshold if present
+        if "min_strength" in criteria:
+            framework_query["importance_min"] = criteria["min_strength"]
+        
+        # Get limit if present
+        limit = criteria.get("limit")
+        
+        # Execute query in framework index
+        framework_results = self.framework_index.search(
+            framework_query,
+            limit=limit,
+            importance_threshold=criteria.get("min_strength")
+        )
+        
+        # Convert results back to our memory items
+        result_memories = []
+        for framework_memory in framework_results:
+            # Find the corresponding memory in our all_memories list
+            for memory in self.all_memories:
+                if memory.id == framework_memory.id:
+                    result_memories.append(memory)
+                    break
+        
+        return result_memories
     
     def get_memories_by_time_period(self, year: int, month: int) -> List[MemoryBase]:
-        """Get all memories from a specific time period."""
+        """
+        Get memories from a specific time period.
+        
+        Args:
+            year: The year
+            month: The month (1-12)
+            
+        Returns:
+            List of memories from that time period
+        """
         time_key = f"{year:04d}-{month:02d}"
         return self.time_index.get(time_key, [])
-    
-    def get_memories_by_importance(self, category: str) -> List[MemoryBase]:
-        """Get all memories of a specific importance category."""
-        return self.importance_index.get(category, [])
-    
-    def get_memories_by_topic(self, topic: str) -> List[MemoryBase]:
-        """Get all memories related to a specific topic."""
-        return self.topic_index.get(topic, [])
     
     def get_recent_memories(self, count: int = 10) -> List[MemoryBase]:
         """Get the most recent memories."""
@@ -305,17 +390,16 @@ class MemoryIndex:
     
     def get_strongest_memories(self, count: int = 10) -> List[MemoryBase]:
         """Get the strongest memories based on current strength."""
-        current_time = datetime.datetime.now()
         sorted_memories = sorted(
             self.all_memories,
-            key=lambda m: m.get_current_strength(current_time),
+            key=lambda m: m.get_current_strength(),
             reverse=True
         )
         return sorted_memories[:count]
     
     def prune_weak_memories(self, threshold: float = 0.1) -> int:
         """
-        Remove memories that have decayed below the threshold.
+        Remove memories with strength below the threshold.
         
         Args:
             threshold: Minimum strength to keep
@@ -324,12 +408,67 @@ class MemoryIndex:
             Number of memories removed
         """
         current_time = datetime.datetime.now()
+        
+        # Find weak memories
         weak_memories = [
-            m for m in self.all_memories
-            if m.get_current_strength(current_time) < threshold
+            memory for memory in self.all_memories
+            if memory.get_current_strength(current_time) < threshold
+            and not memory.is_core_memory()
         ]
         
+        # Remove weak memories
         for memory in weak_memories:
             self.remove_memory(memory)
         
         return len(weak_memories)
+    
+    def get_memory(self, memory_id: str) -> Optional[MemoryBase]:
+        """
+        Get a memory by ID.
+        
+        Args:
+            memory_id: ID of the memory to retrieve
+            
+        Returns:
+            The memory item, or None if not found
+        """
+        for memory in self.all_memories:
+            if memory.id == memory_id:
+                return memory
+        return None
+    
+    def update_memory(self, memory: MemoryBase) -> bool:
+        """
+        Update a memory's indices.
+        
+        Args:
+            memory: The updated memory
+            
+        Returns:
+            True if updated successfully, False if memory not found
+        """
+        # Remove old entry and add updated one
+        old_memory = self.get_memory(memory.id)
+        if old_memory:
+            self.remove_memory(old_memory)
+            self.add_memory(memory)
+            return True
+        return False
+    
+    def clear(self) -> None:
+        """Clear all memories and indices."""
+        self.tag_index.clear()
+        self.senator_index.clear()
+        self.event_type_index.clear()
+        self.time_index.clear()
+        self.importance_index = {
+            "core": [],
+            "long_term": [],
+            "medium_term": [],
+            "short_term": []
+        }
+        self.topic_index.clear()
+        self.all_memories.clear()
+        
+        if self.use_framework_index and self.framework_index:
+            self.framework_index.clear()
