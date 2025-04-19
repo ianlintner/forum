@@ -1,7 +1,7 @@
 # Roman Senate Event System Documentation
 
 **Author:** Documentation Team  
-**Version:** 1.0.0  
+**Version:** 1.2.0  
 **Date:** April 18, 2025
 
 ## Overview
@@ -18,6 +18,9 @@ This documentation package provides comprehensive information about the Roman Se
 | [Developer Guide](developer_guide.md) | How to extend and work with the event system |
 | [Architecture](architecture.md) | Detailed system design and component relationships |
 | [Examples](examples.md) | Code examples and usage patterns |
+| [Integration Guide](integration_guide.md) | How to integrate existing code with the event system |
+| [Extending Events](extending_events.md) | Guide to creating new event types and handlers |
+| [Test Fixes](test_fixes.md) | Guide to fixing common test issues |
 
 ## Quick Links
 
@@ -25,8 +28,10 @@ This documentation package provides comprehensive information about the Roman Se
 
 - [Running the Simulation](user_guide.md#running-the-simulation)
 - [Understanding Debate Behavior](user_guide.md#understanding-debate-behavior)
-- [Debugging and Monitoring](user_guide.md#debugging-and-monitoring)
+- [Configuring the Event System](user_guide.md#configuring-the-event-system)
+- [Logging and Monitoring](user_guide.md#logging-and-monitoring)
 - [Troubleshooting](user_guide.md#troubleshooting)
+- [Command-Line Options](user_guide.md#command-line-options)
 
 ### For Developers
 
@@ -37,6 +42,9 @@ This documentation package provides comprehensive information about the Roman Se
 - [Senator Agent Integration](developer_guide.md#senator-agent-integration)
 - [Testing the Event System](developer_guide.md#testing-the-event-system)
 - [Best Practices](developer_guide.md#best-practices)
+- [Integrating Existing Code](integration_guide.md#integration-overview)
+- [Creating New Event Types](extending_events.md#creating-new-event-types)
+- [Performance Optimization](extending_events.md#performance-optimization)
 
 ### Code Examples
 
@@ -45,6 +53,16 @@ This documentation package provides comprehensive information about the Roman Se
 - [Senator Agent Examples](examples.md#senator-agent-examples)
 - [Event Memory Examples](examples.md#event-memory-examples)
 - [Advanced Examples](examples.md#advanced-examples)
+- [Integration Examples](integration_guide.md#case-studies)
+- [Event Extension Examples](extending_events.md#examples)
+
+### Troubleshooting
+
+- [Common Issues](test_fixes.md#test-failures-overview)
+- [Fixing Source Representation](test_fixes.md#issue-2-source-representation-in-events)
+- [Event Handler Calling Issues](test_fixes.md#issue-3-event-handler-calling)
+- [Vote Mapping Problems](test_fixes.md#issue-4-vote-mapping)
+- [Event Memory Issues](test_fixes.md#issue-5-event-memory-record-method)
 
 ## Key Features
 
@@ -55,8 +73,12 @@ The Roman Senate Event System provides:
 3. **Position Changes**: Senators can be persuaded to change their stance on topics
 4. **Memory of Events**: Senators remember events, reactions, and interactions
 5. **Comprehensive Logging**: Detailed logging of all events for debugging and analysis
+6. **Relationship Development**: Senators develop relationships based on interactions
+7. **Faction Dynamics**: Faction alignments influence reactions and interruptions
 
 ## System Architecture
+
+The event system is built around a central EventBus that connects all components:
 
 ```mermaid
 flowchart TD
@@ -76,6 +98,67 @@ flowchart TD
     DM -- "8. Handle Interjection" --> SA1
 ```
 
+## Event Types
+
+The system includes several core event types:
+
+```mermaid
+classDiagram
+    Event <|-- DebateEvent
+    Event <|-- SpeechEvent
+    Event <|-- ReactionEvent
+    Event <|-- InterjectionEvent
+    
+    class Event {
+        +String eventId
+        +String eventType
+        +DateTime timestamp
+        +Any source
+        +Map metadata
+    }
+    
+    class DebateEvent {
+        +String TYPE = "debate_event"
+        +DebateEventType debate_event_type
+        +String topic
+    }
+    
+    class SpeechEvent {
+        +String TYPE = "speech_event"
+        +Dict speaker
+        +String topic
+        +String latin_content
+        +String english_content
+        +String stance
+    }
+    
+    class ReactionEvent {
+        +String TYPE = "reaction_event"
+        +Dict reactor
+        +String target_event_id
+        +String content
+        +String reaction_type
+    }
+    
+    class InterjectionEvent {
+        +String TYPE = "interjection_event"
+        +Dict interjector
+        +Dict target_speaker
+        +InterjectionType interjection_type
+        +String latin_content
+        +String english_content
+    }
+```
+
+## Recent Enhancements
+
+The event system has recently undergone several major enhancements:
+
+1. **CLI Import Fix**: Resolved relative import issues in cli.py
+2. **Comprehensive Logging System**: Added robust file and console logging
+3. **Event-Driven Architecture**: Implemented a publisher-subscriber system
+4. **Testing Framework**: Created comprehensive tests for the new event system
+
 ## Getting Started
 
 To quickly see the event system in action:
@@ -89,8 +172,41 @@ python -m src.roman_senate.cli simulate --verbose
 
 # Run a debate with specific logging level
 python -m src.roman_senate.cli play --log-level DEBUG
+
+# Run a simulation with custom log file
+python -m src.roman_senate.cli simulate --log-file my_simulation.log
+
+# Run a simulation with specific event types enabled
+python -m src.roman_senate.cli simulate --enable-reactions --enable-interruptions
 ```
 
 For a quick introduction to the system, see the [Quick Start Guide](quick_start.md).
 
 For more detailed instructions, see the [User Guide](user_guide.md).
+
+## Frequently Asked Questions
+
+### General Questions
+
+**Q: What is the event system?**  
+A: The event system is an event-driven architecture that enables senators to observe, listen to, and react to events in their environment, particularly during debates.
+
+**Q: How does the event system improve the simulation?**  
+A: It creates a more realistic and immersive simulation by enabling dynamic interactions between senators, including real-time reactions, interruptions, and position changes.
+
+**Q: What are the main components of the event system?**  
+A: The main components are the EventBus, Event classes, EventDrivenSenatorAgent, DebateManager, and EventMemory.
+
+### Technical Questions
+
+**Q: How do I create a new event type?**  
+A: Extend the base Event class and define a unique TYPE class variable. See [Creating New Event Types](extending_events.md#creating-new-event-types).
+
+**Q: How do I subscribe to events?**  
+A: Use the EventBus.subscribe method, providing the event type and a handler function or object. See [Working with Events](developer_guide.md#working-with-events).
+
+**Q: How do I optimize event handling for performance?**  
+A: See the [Performance Optimization](extending_events.md#performance-optimization) section for techniques like batch processing, caching, and selective processing.
+
+**Q: How do I integrate existing code with the event system?**  
+A: See the [Integration Guide](integration_guide.md) for strategies like using compatibility layers, adapters, and feature flags.

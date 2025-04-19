@@ -42,18 +42,34 @@ class Event:
         Returns:
             Dictionary representation of the event
         """
+        # Extract source name properly from different source types
+        source_repr = None
+        if self.source:
+            if isinstance(self.source, dict) and "name" in self.source:
+                source_repr = self.source["name"]
+            else:
+                source_repr = getattr(self.source, "name", str(self.source))
+                
         return {
             "event_id": self.event_id,
             "event_type": self.event_type,
             "timestamp": self.timestamp,
-            "source": getattr(self.source, "name", str(self.source)) if self.source else None,
+            "source": source_repr,
             "metadata": self.metadata,
             "priority": self.priority
         }
     
     def __str__(self) -> str:
         """String representation of the event."""
-        source_name = getattr(self.source, "name", str(self.source)) if self.source else "Unknown"
+        source_name = None
+        if self.source:
+            if isinstance(self.source, dict) and "name" in self.source:
+                source_name = self.source["name"]
+            else:
+                source_name = getattr(self.source, "name", str(self.source))
+        else:
+            source_name = "Unknown"
+            
         return f"Event({self.event_type}, source={source_name}, id={self.event_id})"
 
 

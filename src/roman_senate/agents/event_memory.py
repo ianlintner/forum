@@ -42,12 +42,20 @@ class EventMemory(AgentMemory):
         Args:
             event: The event to record
         """
+        # Extract source name properly from different source types
+        source_repr = "Unknown"
+        if event.source:
+            if isinstance(event.source, dict) and "name" in event.source:
+                source_repr = event.source["name"]
+            else:
+                source_repr = getattr(event.source, "name", str(event.source))
+                
         # Store basic event data
         event_data = {
             "event_id": event.event_id,
             "event_type": event.event_type,
             "timestamp": event.timestamp,
-            "source": getattr(event.source, "name", str(event.source)) if event.source else "Unknown",
+            "source": source_repr,
             "metadata": event.metadata.copy(),
             "recorded_at": datetime.now().isoformat()
         }
@@ -56,8 +64,7 @@ class EventMemory(AgentMemory):
         self.event_history.append(event_data)
         
         # Also add as a general observation for backward compatibility
-        source_name = getattr(event.source, "name", str(event.source)) if event.source else "Unknown"
-        self.add_observation(f"Observed {event.event_type} event from {source_name}")
+        self.add_observation(f"Observed {event.event_type} event from {source_repr}")
         
         logger.debug(f"Recorded event {event.event_id} in memory")
         

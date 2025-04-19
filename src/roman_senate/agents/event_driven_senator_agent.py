@@ -125,7 +125,7 @@ class EventDrivenSenatorAgent(SenatorAgent):
             logger.debug(f"Senator {self.name} noticed debate start on {self.active_debate_topic}")
             
             # If we don't have a stance on this topic yet, decide one
-            if not self.current_stance and self.active_debate_topic:
+            if self.active_debate_topic:
                 await self.decide_stance(self.active_debate_topic, {})
             
         elif event.debate_event_type == DebateEventType.DEBATE_END:
@@ -282,32 +282,32 @@ class EventDrivenSenatorAgent(SenatorAgent):
             "agreement": [
                 f"Nods in agreement with {speaker_name}",
                 f"Gestures supportively toward {speaker_name}",
-                f"Quietly says 'Bene dictum' (well said)"
+                f"Quietly says 'Bene dictum' (well said) to {speaker_name}"
             ],
             "disagreement": [
                 f"Frowns at {speaker_name}'s points",
-                f"Shakes head in disagreement",
-                f"Mutters quietly in disagreement"
+                f"Shakes head in disagreement with {speaker_name}",
+                f"Mutters quietly in disagreement with {speaker_name}"
             ],
             "interest": [
-                f"Leans forward with interest",
+                f"Leans forward with interest while watching {speaker_name}",
                 f"Listens attentively to {speaker_name}",
                 f"Takes mental notes on {speaker_name}'s arguments"
             ],
             "boredom": [
-                "Stifles a yawn",
-                "Looks disinterested",
-                "Glances around the chamber"
+                f"Stifles a yawn while {speaker_name} speaks",
+                f"Looks disinterested in {speaker_name}'s speech",
+                f"Glances around the chamber instead of focusing on {speaker_name}"
             ],
             "skepticism": [
-                "Raises an eyebrow skeptically",
+                f"Raises an eyebrow skeptically at {speaker_name}",
                 f"Looks unconvinced by {speaker_name}'s arguments",
-                "Exchanges skeptical glances with nearby senators"
+                f"Exchanges skeptical glances with nearby senators about {speaker_name}'s points"
             ],
             "neutral": [
-                "Maintains a neutral expression",
-                "Listens without visible reaction",
-                "Considers the arguments carefully"
+                f"Maintains a neutral expression while listening to {speaker_name}",
+                f"Listens to {speaker_name} without visible reaction",
+                f"Considers {speaker_name}'s arguments carefully"
             ]
         }
         

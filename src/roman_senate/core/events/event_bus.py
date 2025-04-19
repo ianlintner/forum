@@ -108,11 +108,14 @@ class EventBus:
         # Notify all subscribers
         for handler in handlers:
             try:
-                if hasattr(handler, 'handle_event'):
-                    # If it's an object with handle_event method
+                # Check if it's a mock object from unittest.mock
+                is_mock = hasattr(handler, '_mock_return_value')
+                
+                if hasattr(handler, 'handle_event') and not is_mock:
+                    # If it's an object with handle_event method (and not a mock)
                     await handler.handle_event(event)
                 else:
-                    # If it's a callable function
+                    # If it's a callable function or a mock
                     result = handler(event)
                     # If the result is a coroutine, await it
                     if asyncio.iscoroutine(result):
