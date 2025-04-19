@@ -245,7 +245,7 @@ Experience how the narrative system enriches the simulation with daily events an
 Try the narrative system demo to experience the AI-generated storytelling:
 
 ```bash
-python demo_narrative.py
+python scripts/demo_narrative.py
 ```
 
 This demo showcases:
@@ -254,7 +254,27 @@ This demo showcases:
 - Relationship tracking between entities
 - Rich text output for better readability
 
-Run `python demo_narrative.py --help` for additional options.
+Run `python scripts/demo_narrative.py --help` for additional options.
+
+## Repository Organization
+
+The repository is organized as follows:
+
+- `src/` - Source code for the game and framework
+- `docs/` - Documentation
+  - `architecture/` - Architecture and design documents
+  - `guides/` - User and developer guides
+  - `agentic_framework/` - Agentic framework documentation
+  - `components/` - Component-specific documentation
+  - `event_system/` - Event system documentation
+  - `relationship_system/` - Relationship system documentation
+- `scripts/` - Utility and run scripts
+- `tests/` - Test suite
+- `tools/` - Development tools
+- `data/` - Game data and cache
+- `logs/` - Log files
+- `saves/` - Save game files
+
 
 ## Further Documentation
 
@@ -262,8 +282,8 @@ For more detailed information about the game components and architecture, see th
 
 > **New: Improved CLI Usage**
 > We've added new convenient ways to run the Roman Senate CLI:
-> - Use the `run_senate.py` script: `python run_senate.py simulate`
-> - Install as a command: `python setup_cli.py` (then use `senate` command)
+> - Use the `run_senate.py` script: `python scripts/run_senate.py simulate`
+> - Install as a command: `python scripts/setup_cli.py` (then use `senate` command)
 > - See [CLI_USAGE.md](CLI_USAGE.md) for detailed instructions
 - [User Guide](docs/user_guide.md)
 - [Speech Generation Framework](docs/speech_generation.md)

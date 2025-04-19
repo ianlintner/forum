@@ -315,6 +315,7 @@ def simulate(
     non_interactive: bool = typer.Option(False, help="Run in non-interactive mode (for CI/CD testing)"),
     provider: str = typer.Option(None, help="LLM provider to use (defaults to config)"),
     model: str = typer.Option(None, help="LLM model to use (defaults to config, for OpenAI use 'gpt-4' for non-turbo)"),
+    use_framework: bool = typer.Option(False, help="Use the new Agentic Game Framework"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Increase output verbosity"),
     log_level: str = typer.Option(None, "--log-level", help="Set logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)"),
     log_file: str = typer.Option(None, "--log-file", help="Custom log file path")
@@ -339,8 +340,16 @@ def simulate(
         year_int = int(year)
         # Run the unified simulation
         console.print("[dim]Starting Roman Senate simulation...[/]")
-        logger.info(f"Starting simulation: senators={senators_int}, debate_rounds={debate_rounds_int}, topics={topics_int}, year={year_int}, provider={provider}, model={model}")
-        asyncio.run(run_simulation_async(senators_int, debate_rounds_int, topics_int, year_int, provider, model))
+        logger.info(f"Starting simulation: senators={senators_int}, debate_rounds={debate_rounds_int}, topics={topics_int}, year={year_int}, provider={provider}, model={model}, use_framework={use_framework}")
+        
+        if use_framework:
+            # Run simulation with the new framework
+            console.print("[bold cyan]Using new Agentic Game Framework[/]")
+            logger.info("Using new Agentic Game Framework for simulation")
+            asyncio.run(run_framework_simulation(senators_int, debate_rounds_int, topics_int, year_int, provider, model))
+        else:
+            # Run simulation with the traditional system
+            asyncio.run(run_simulation_async(senators_int, debate_rounds_int, topics_int, year_int, provider, model))
         
     except Exception as e:
         error_msg = f"Simulation error: {str(e)}"
@@ -359,6 +368,48 @@ def simulate(
         if non_interactive:
             logger.critical("Exiting with error code 1 due to simulation failure in non-interactive mode")
             sys.exit(1)
+
+async def run_framework_simulation(senators: int = 10, debate_rounds: int = 3, topics: int = 3, year: int = -100, provider: str = None, model: str = None):
+    """
+    Run a simulation using the new Agentic Game Framework.
+    
+    This function uses the integration components to run a Senate simulation
+    with the new framework architecture.
+    
+    Args:
+        senators: Number of senators to simulate
+        debate_rounds: Number of debate rounds per topic
+        topics: Number of topics to debate
+        year: Year in Roman history (negative for BCE)
+        provider: LLM provider to use (defaults to config)
+        model: LLM model to use (defaults to config)
+    """
+    # Import the framework integration demo
+    if is_running_directly:
+        from src.roman_senate.examples.framework_integration_demo.framework_integration_demo import FrameworkIntegrationDemo
+    else:
+        from .examples.framework_integration_demo.framework_integration_demo import FrameworkIntegrationDemo
+    
+    # Use a deterministic seed if in test/non-interactive mode for reproducibility
+    if os.environ.get('ROMAN_SENATE_TEST_MODE') == 'true':
+        import random
+        random.seed(42)
+        console.print("[dim]Using deterministic seed for testing...[/]")
+        logger.debug("Using deterministic seed (42) for testing")
+    
+    # Create and run the framework integration demo
+    console.print("[bold cyan]Initializing Framework Integration Demo...[/]")
+    demo = FrameworkIntegrationDemo(num_senators=senators, num_topics=topics)
+    
+    # Run the simulation
+    console.print("[bold cyan]Running Senate simulation with Agentic Game Framework...[/]")
+    await demo.run_simulation()
+    
+    console.print("\n[bold green]Framework simulation completed successfully![/]")
+    console.print(f"Simulated {topics} topics with {senators} senators in the year {abs(year)} BCE using the new framework.")
+    
+    return demo.event_history
+
 async def run_simulation_async(senators: int = 10, debate_rounds: int = 3, topics: int = 3, year: int = -100, provider: str = None, model: str = None):
     """
     Run a unified simulation of the Roman Senate using agent-driven logic with traditional display.
