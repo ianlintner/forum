@@ -28,7 +28,7 @@
 - [Advanced Examples](#advanced-examples)
   - [Custom Relationship Types](#custom-relationship-types)
   - [Custom Event Handlers](#custom-event-handlers)
-  - [Integration Testing](#integration-testing)
+
 
 ## Introduction
 
