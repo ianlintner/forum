@@ -17,10 +17,11 @@ import asyncio
 import logging
 from typing import Optional, List
 
-# Add the project directory to the Python path
-project_dir = os.path.dirname(os.path.abspath(__file__))
-if project_dir not in sys.path:
-    sys.path.insert(0, project_dir)
+# Add the project root directory to the Python path
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir)  # Go up one level to the project root
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 # Import the CLI app after setting the correct path
 from src.roman_senate.cli import app as senate_app, USE_FRAMEWORK
@@ -74,10 +75,11 @@ def ensure_correct_path():
         os.chdir(script_dir)
         logger.debug(f"Changed working directory to: {script_dir}")
     
-    # Add the base directory to Python path
-    if script_dir not in sys.path:
-        sys.path.insert(0, script_dir)
-        logger.debug(f"Added {script_dir} to Python path")
+    # Add the project root directory to Python path
+    project_root = os.path.dirname(script_dir)  # Go up one level to the project root
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+        logger.debug(f"Added {project_root} to Python path")
 
 @app.command(name="simulate")
 def simulate(
