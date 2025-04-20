@@ -5,12 +5,16 @@ This module provides an efficient indexing and retrieval system for agent memori
 allowing for fast querying based on various criteria.
 """
 
+import logging
 import time
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Set, Tuple
+from functools import lru_cache
+from typing import Any, Dict, List, Optional, Set, Tuple, FrozenSet, Hashable
 
 from .memory_interface import MemoryItem
 
+# Set up module logger
+logger = logging.getLogger(__name__)
 
 class MemoryIndex:
     """
@@ -26,8 +30,14 @@ class MemoryIndex:
     This enables efficient memory retrieval without scanning all memories.
     """
     
-    def __init__(self):
-        """Initialize a new memory index with empty indices."""
+    def __init__(self, enable_caching: bool = True, cache_size: int = 128):
+        """
+        Initialize a new memory index with empty indices.
+        
+        Args:
+            enable_caching: Whether to enable LRU caching for search operations
+            cache_size: Maximum size of LRU caches
+        """
         # Primary storage: memory_id -> memory_item
         self._memories: Dict[str, MemoryItem] = {}
         
@@ -39,10 +49,29 @@ class MemoryIndex:
         self._importance_index: Dict[int, Set[str]] = defaultdict(set)
         
         # Association index: (key, value) -> set of memory_ids
-        self._association_index: Dict[Tuple[str, Any], Set[str]] = defaultdict(set)
+        self._association_index: Dict[Tuple[str, Hashable], Set[str]] = defaultdict(set)
         
         # Text index: word -> set of memory_ids
         self._text_index: Dict[str, Set[str]] = defaultdict(set)
+        
+        # Performance metrics
+        self._metrics = {
+            "index_operations": 0,
+            "search_operations": 0,
+            "cache_hits": 0,
+            "total_memories": 0,
+            "last_search_time": 0.0
+        }
+        
+        # Caching parameters
+        self._enable_caching = enable_caching
+        self._cache_size = cache_size
+        
+        # Query cache for faster repeated searches
+        self._query_cache: Dict[str, Tuple[float, List[MemoryItem]]] = {}
+        self._cache_ttl = 5.0  # seconds
+            
+        logger.info(f"Initialized MemoryIndex with caching={'enabled' if enable_caching else 'disabled'}")
     
     def index_memory(self, memory_item: MemoryItem) -> None:
         """
@@ -51,6 +80,7 @@ class MemoryIndex:
         Args:
             memory_item: The memory item to index
         """
+        start_time = time.time()
         memory_id = memory_item.id
         
         # Store in primary storage
@@ -74,9 +104,23 @@ class MemoryIndex:
             self._index_text(memory_id, memory_item.content)
         elif isinstance(memory_item.content, dict):
             # For dictionaries (like event data), index string values
-            for value in memory_item.content.values():
+            for key, value in memory_item.content.items():
                 if isinstance(value, str):
-                    self._index_text(memory_id, value)
+                    # Index with key context for better search results
+                    self._index_text(memory_id, f"{key}: {value}")
+        
+        # Update metrics
+        self._metrics["index_operations"] += 1
+        self._metrics["total_memories"] = len(self._memories)
+        
+        # Clear query cache since indices have changed
+        if self._enable_caching:
+            self._query_cache.clear()
+            logger.debug(f"Cache cleared due to indexing of memory {memory_id}")
+            
+        indexing_time = time.time() - start_time
+        if indexing_time > 0.01:  # Log slow indexing operations
+            logger.debug(f"Slow memory indexing: {memory_id} took {indexing_time:.4f}s")
     
     def _index_text(self, memory_id: str, text: str) -> None:
         """
@@ -201,6 +245,34 @@ class MemoryIndex:
         Returns:
             List[MemoryItem]: List of matching memory items
         """
+        start_time = time.time()
+        self._metrics["search_operations"] += 1
+        
+        # Create a cache key from the query parameters
+        if self._enable_caching:
+            # Convert query to a hashable representation
+            try:
+                cache_parts = []
+                for k, v in sorted(query.items()):
+                    if isinstance(v, (str, int, float, bool)):
+                        cache_parts.append(f"{k}:{v}")
+                    elif isinstance(v, dict):
+                        cache_parts.append(f"{k}:{hash(frozenset(v.items()))}")
+                
+                cache_key = f"query({'|'.join(cache_parts)})|limit:{limit}|importance:{importance_threshold}"
+                
+                # Check cache
+                if cache_key in self._query_cache:
+                    cache_time, cached_results = self._query_cache[cache_key]
+                    if time.time() - cache_time < self._cache_ttl:
+                        self._metrics["cache_hits"] += 1
+                        self._metrics["last_search_time"] = time.time() - start_time
+                        logger.debug(f"Cache hit for query: {cache_key[:50]}...")
+                        return cached_results
+            except (TypeError, ValueError):
+                # If cache key creation fails, proceed without caching
+                logger.debug("Failed to create cache key, proceeding without caching")
+        
         # Start with all memory IDs
         result_ids: Optional[Set[str]] = None
         
@@ -262,6 +334,30 @@ class MemoryIndex:
         # Apply limit if specified
         if limit is not None:
             results = results[:limit]
+        
+        # Store in cache if caching is enabled
+        if self._enable_caching:
+            try:
+                # Check if we created a cache key earlier
+                if 'cache_key' in locals():
+                    # Store limited results in cache
+                    self._query_cache[cache_key] = (time.time(), results)
+                    
+                    # Limit cache size
+                    if len(self._query_cache) > self._cache_size:
+                        # Remove oldest entries
+                        oldest_keys = sorted(self._query_cache.keys(),
+                                          key=lambda k: self._query_cache[k][0])[:len(self._query_cache) - self._cache_size]
+                        for key in oldest_keys:
+                            del self._query_cache[key]
+            except (NameError, TypeError):
+                # Cache key wasn't created earlier, skip caching
+                pass
+        
+        # Record metrics
+        self._metrics["last_search_time"] = time.time() - start_time
+        if time.time() - start_time > 0.1:  # Log slow search operations
+            logger.warning(f"Slow search operation: {time.time() - start_time:.4f}s for {len(results)} results")
             
         return results
     

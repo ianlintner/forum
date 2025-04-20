@@ -1,7 +1,7 @@
 # Agentic Game Framework Migration Guide
 
 **Author:** Documentation Team  
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Date:** April 19, 2025
 
 ## Table of Contents
@@ -13,17 +13,24 @@
   - [Implementation Phase](#implementation-phase)
   - [Testing Phase](#testing-phase)
   - [Deployment Phase](#deployment-phase)
+- [Completed Migration Phases](#completed-migration-phases)
+  - [Phase 1: Core Event System](#phase-1-core-event-system)
+  - [Phase 2: Agent System](#phase-2-agent-system)
+  - [Phase 3: Memory & Relationship Systems](#phase-3-memory--relationship-systems)
+  - [Phase 4: Integration Layer](#phase-4-integration-layer)
+  - [Phase 5: CLI & Interface Adaptation](#phase-5-cli--interface-adaptation)
 - [Roman Senate Migration](#roman-senate-migration)
   - [Component Mapping](#component-mapping)
   - [Event System Migration](#event-system-migration)
   - [Agent System Migration](#agent-system-migration)
   - [Memory System Migration](#memory-system-migration)
   - [Relationship System Migration](#relationship-system-migration)
-- [Common Migration Patterns](#common-migration-patterns)
+- [Migration Patterns](#migration-patterns)
   - [Event-Based Communication](#event-based-communication)
   - [Agent Abstraction](#agent-abstraction)
   - [Memory Management](#memory-management)
   - [Relationship Modeling](#relationship-modeling)
+  - [Dual-Mode Operation](#dual-mode-operation)
 - [Migration Challenges](#migration-challenges)
   - [Architectural Differences](#architectural-differences)
   - [Data Migration](#data-migration)
@@ -163,6 +170,131 @@ Once testing is complete, you can deploy the migrated system.
    - Optimize performance based on real-world usage
    - Address any issues that arise
 
+## Completed Migration Phases
+
+As of this version, we have successfully completed the first five phases of the migration plan for the Roman Senate simulation. These phases form a solid foundation for a complete migration to the new architecture.
+
+### Phase 1: Core Event System
+
+The Core Event System implementation established the foundation for the event-driven architecture, including:
+
+- **Base Event Classes**: Created abstract base class for all events
+- **Event Bus**: Implemented event publishing and subscription mechanisms
+- **Event Filtering**: Added support for filtering events by type, source, and other criteria
+- **Event Batching**: Implemented batch processing for improved performance
+
+```python
+# Example of a custom event in the new system
+from agentic_game_framework.events.base import BaseEvent
+
+class SpeechEvent(BaseEvent):
+    def __init__(self, senator_id, topic, content, **kwargs):
+        super().__init__(
+            event_type="senate.speech",
+            source=senator_id,
+            data={
+                "topic": topic,
+                "content": content
+            },
+            **kwargs
+        )
+```
+
+### Phase 2: Agent System
+
+The Agent System implementation provides a flexible framework for creating and managing agents:
+
+- **Abstract Agent Interface**: Created a common interface for all agents
+- **Event-Driven Senators**: Reimplemented senators as event-driven agents
+- **Agent Factory**: Added factory pattern for creating different types of agents
+- **Agent Manager**: Implemented centralized agent management
+
+```python
+# Example of a senator agent in the new system
+from agentic_game_framework.agents.base_agent import BaseAgent
+
+class SenatorAgent(BaseAgent):
+    def __init__(self, name, faction, **kwargs):
+        super().__init__(agent_id=f"senator_{name.lower()}", **kwargs)
+        self.name = name
+        self.faction = faction
+        self.subscribe_to_event("senate.speech")
+        self.subscribe_to_event("senate.debate")
+        
+    def process_event(self, event):
+        if event.event_type == "senate.speech":
+            # Process speech event
+            return self._generate_reaction(event)
+```
+
+### Phase 3: Memory & Relationship Systems
+
+The Memory and Relationship Systems provide sophisticated mechanisms for tracking information and social connections:
+
+- **Memory Interface**: Created a standard interface for memory management
+- **Memory Types**: Implemented different types of memories (event, episodic, semantic)
+- **Memory Manager**: Added centralized memory storage and retrieval
+- **Relationship Types**: Created abstractions for different relationship types
+- **Relationship Manager**: Implemented centralized relationship tracking
+
+```python
+# Example of memory creation from an event
+from agentic_game_framework.memory.memory_interface import MemoryItem
+
+class SpeechMemory(MemoryItem):
+    def __init__(self, speech_event, importance=0.5, **kwargs):
+        super().__init__(importance=importance, **kwargs)
+        self.speaker_id = speech_event.source
+        self.topic = speech_event.data.get("topic")
+        self.content = speech_event.data.get("content")
+        self.timestamp = speech_event.timestamp
+```
+
+### Phase 4: Integration Layer
+
+The Integration Layer enables interoperability between the old and new architectures:
+
+- **Architecture Bridges**: Created bridges between the old and new systems
+- **Event Converters**: Implemented tools to convert between old messages and new events
+- **Legacy Adapters**: Added adapters to wrap legacy components for use in the new system
+- **Dual-Mode Operation**: Implemented the ability to run in either or both architectures
+
+```python
+# Example of an architecture bridge
+from agentic_game_framework.integration.bridges import ArchitectureBridge
+
+class SenateSessionBridge(ArchitectureBridge):
+    def __init__(self, event_bus, legacy_session_manager):
+        self.event_bus = event_bus
+        self.legacy_session_manager = legacy_session_manager
+        self.event_bus.subscribe("senate.session.start", self.handle_session_start)
+        self.event_bus.subscribe("senate.session.end", self.handle_session_end)
+        
+    def handle_session_start(self, event):
+        # Convert event to legacy format and call legacy method
+        self.legacy_session_manager.start_session(
+            date=event.data.get("date"),
+            topic=event.data.get("topic")
+        )
+```
+
+### Phase 5: CLI & Interface Adaptation
+
+The CLI and Interface Adaptation provides user interface tools for controlling the system:
+
+- **Command-Line Interface**: Reimplemented the CLI with flags for selecting architecture mode
+- **Configuration System**: Added flexible configuration for framework settings
+- **Mode Selection**: Implemented the ability to select between legacy, new, or hybrid mode
+- **Reporting Tools**: Created tools for monitoring system behavior and performance
+
+```bash
+# Example CLI usage with mode selection
+$ python run_senate.py --mode=new --agents=50 --topic="Land Reform"
+
+# Running in hybrid mode (both architectures)
+$ python run_senate.py --mode=hybrid --compare-output
+```
+
 ## Roman Senate Migration
 
 The Roman Senate simulation serves as a case study for migrating to the Agentic Game Framework. This section details the migration process and provides specific examples.
@@ -254,15 +386,15 @@ The agent system migration involved converting senators to framework agents:
            senator_state.update({
                "senate": {
                    "reputation": 50,
-                   "influence": 50,
-                   "positions": {}
+                   "influence": 30,
+                   "speaking_skill": 40
                }
            })
            
            super().__init__(
+               agent_id=agent_id or f"senator_{name.lower()}",
                name=name,
                attributes=senator_attributes,
-               agent_id=agent_id,
                initial_state=senator_state
            )
            
@@ -270,73 +402,99 @@ The agent system migration involved converting senators to framework agents:
            self.subscribe_to_event("debate")
            self.subscribe_to_event("vote")
            self.subscribe_to_event("speech")
-       
-       def process_event(self, event: BaseEvent) -> None:
-           # Implementation based on existing logic
-           pass
-       
-       def generate_action(self) -> BaseEvent:
-           # Implementation based on existing logic
-           pass
    ```
 
-2. **Migrate Decision Logic**:
-   - Convert existing decision-making logic to the `generate_action` method
-   - Implement event processing in the `process_event` method
-   - Use agent state to store senator-specific information
+2. **Implement Event Handling**:
+   ```python
+   def process_event(self, event: BaseEvent) -> Optional[BaseEvent]:
+       if event.event_type == "debate":
+           return self._process_debate_event(event)
+       elif event.event_type == "vote":
+           return self._process_vote_event(event)
+       elif event.event_type == "speech":
+           return self._process_speech_event(event)
+       
+       return None
+   ```
+
+3. **Implement Decision Making**:
+   ```python
+   def generate_action(self) -> Optional[BaseEvent]:
+       # Check current state to determine action
+       state = self.get_state()
+       
+       if state.get("active_debate"):
+           # Generate speech or vote event based on state
+           return self._generate_speech_event()
+       
+       return None
+   ```
 
 ### Memory System Migration
 
-The memory system migration involved converting the existing memory mechanisms to the framework's memory system:
+The memory system migration involved implementing a memorization system for agents:
 
-1. **Create Custom Memory Types**:
+1. **Define Memory Types**:
    ```python
-   from agentic_game_framework.memory.memory_interface import EventMemoryItem
+   from agentic_game_framework.memory.memory_interface import MemoryItem
    
-   class DebateMemory(EventMemoryItem):
+   class SpeechMemory(MemoryItem):
        def __init__(
            self,
            memory_id: str,
            timestamp: float,
            event: BaseEvent,
-           importance: float = 0.7,
-           associations: dict = None
+           importance: float = 0.5
        ):
            super().__init__(
                memory_id=memory_id,
                timestamp=timestamp,
-               event=event,
-               importance=importance,
-               associations=associations or {}
+               importance=importance
            )
            
-           # Extract debate-specific data
-           self.debate_data = self._extract_debate_data(event)
-           
-           # Add debate-specific associations
-           self.add_association("memory_type", "debate")
-           self.add_association("topic", self.debate_data["topic"])
-           self.add_association("position", self.debate_data["position"])
-       
-       def _extract_debate_data(self, event: BaseEvent) -> dict:
-           # Implementation
-           pass
-       
-       def get_summary(self) -> str:
-           # Implementation
-           pass
+           self.speaker_id = event.source
+           self.topic = event.data.get("topic")
+           self.content = event.data.get("content")
+           self.event_id = event.get_id()
    ```
 
-2. **Migrate Memory Storage**:
-   - Convert existing memory storage to the framework's memory system
-   - Implement memory retrieval based on existing logic
-   - Use memory importance to prioritize memories
+2. **Create Memory Manager**:
+   ```python
+   from agentic_game_framework.memory.memory_interface import MemoryInterface
+   
+   class SenatorMemoryManager(MemoryInterface):
+       def __init__(self, agent_id: str, max_memories: int = 100):
+           self.agent_id = agent_id
+           self.memories = {}
+           self.max_memories = max_memories
+           
+       def add_memory(self, memory: MemoryItem) -> None:
+           self.memories[memory.memory_id] = memory
+           
+           # Prune memories if we exceed the maximum
+           if len(self.memories) > self.max_memories:
+               self._prune_memories()
+   ```
+
+3. **Integrate with Event System**:
+   ```python
+   def create_memory_from_event(self, event: BaseEvent) -> Optional[MemoryItem]:
+       if event.event_type == "speech":
+           return SpeechMemory(
+               memory_id=f"speech_{str(uuid.uuid4())}",
+               timestamp=time.time(),
+               event=event,
+               importance=0.7 if event.target == self.agent_id else 0.4
+           )
+       
+       return None
+   ```
 
 ### Relationship System Migration
 
-The relationship system migration involved converting the existing relationship mechanisms to the framework's relationship system:
+The relationship system migration involved implementing a relationship tracking system:
 
-1. **Create Custom Relationship Types**:
+1. **Define Relationship Types**:
    ```python
    from agentic_game_framework.relationships.base_relationship import BaseRelationship
    
@@ -345,199 +503,386 @@ The relationship system migration involved converting the existing relationship 
            self,
            agent_a_id: str,
            agent_b_id: str,
-           strength: float = 0.0,
-           attributes: dict = None,
+           initial_strength: float = 0.0,
            relationship_id: str = None
        ):
            super().__init__(
                agent_a_id=agent_a_id,
                agent_b_id=agent_b_id,
                relationship_type="political",
-               strength=strength,
-               attributes=attributes or {},
+               initial_strength=initial_strength,
                relationship_id=relationship_id
            )
            
-           # Initialize political-specific attributes
-           self.attributes.setdefault("agreement_count", 0)
-           self.attributes.setdefault("disagreement_count", 0)
-           self.attributes.setdefault("last_interaction", None)
-       
-       def update(self, event: BaseEvent) -> bool:
-           # Implementation based on existing logic
-           pass
+           # Set up political-specific attributes
+           self.attributes.update({
+               "trust": 0.5,
+               "respect": 0.5,
+               "agreement": 0.5
+           })
    ```
 
-2. **Migrate Relationship Logic**:
-   - Convert existing relationship logic to the `update` method
-   - Implement relationship creation based on existing logic
-   - Use relationship attributes to store relationship-specific information
+2. **Create Relationship Manager**:
+   ```python
+   from agentic_game_framework.relationships.relationship_manager import RelationshipManager
+   
+   class SenateRelationshipManager(RelationshipManager):
+       def __init__(self, event_bus):
+           super().__init__(event_bus)
+           
+           # Subscribe to relationship-affecting events
+           self.event_bus.subscribe("speech", self._handle_speech_event)
+           self.event_bus.subscribe("vote", self._handle_vote_event)
+   ```
 
-## Common Migration Patterns
+3. **Implement Relationship Dynamics**:
+   ```python
+   def update_relationship_from_event(self, event: BaseEvent) -> None:
+       if event.event_type == "speech":
+           speaker_id = event.source
+           topic = event.data.get("topic")
+           position = event.data.get("position")
+           
+           # Update relationships between speaker and other agents
+           for relationship in self.get_relationships_for_agent(speaker_id):
+               other_agent_id = relationship.get_other_agent_id(speaker_id)
+               
+               # Calculate agreement factor based on agent positions
+               agreement_factor = self._calculate_agreement(other_agent_id, position, topic)
+               
+               # Update relationship strength
+               relationship.update_strength(agreement_factor * 0.1)
+               
+               # Update relationship attributes
+               relationship.update_attribute("agreement", agreement_factor * 0.05)
+   ```
 
-This section describes common patterns for migrating different aspects of existing systems to the Agentic Game Framework.
+## Migration Patterns
+
+These patterns represent common approaches for migrating specific aspects of a system to the Agentic Game Framework.
 
 ### Event-Based Communication
 
-Converting to event-based communication is a key part of migration:
+Converting direct method calls to event-based communication:
 
-1. **Identify Communication Points**:
-   - Look for method calls between components
-   - Identify publish/subscribe patterns in the existing system
-   - Look for observer patterns or event listeners
+1. **Identify Communication Patterns**:
+   - Look for direct method calls between components
+   - Identify the data being passed
+   - Determine the directional flow of information
 
-2. **Create Event Types**:
-   - Create a custom event type for each type of communication
-   - Define the data that needs to be included in each event
-   - Implement event creation in the source component
+2. **Define Event Types**:
+   - Create event types for each type of communication
+   - Define the data structure for each event type
+   - Establish event priorities based on importance
 
-3. **Implement Event Handling**:
-   - Subscribe components to relevant event types
-   - Implement event handling logic in the target component
-   - Convert synchronous calls to asynchronous event handling
+3. **Replace Method Calls with Events**:
+   ```python
+   # Before: Direct method call
+   def deliver_speech(self, topic, content):
+       for senator in self.senators:
+           senator.hear_speech(self.id, topic, content)
+   
+   # After: Event-based communication
+   def deliver_speech(self, topic, content):
+       speech_event = SpeechEvent(
+           source=self.id,
+           topic=topic,
+           content=content
+       )
+       self.event_bus.publish(speech_event)
+   ```
+
+4. **Implement Event Handlers**:
+   ```python
+   def process_event(self, event):
+       if event.event_type == "speech":
+           speaker_id = event.source
+           topic = event.data.get("topic")
+           content = event.data.get("content")
+           
+           # Process the speech
+           self._process_speech(speaker_id, topic, content)
+   ```
 
 ### Agent Abstraction
 
-Converting existing entities to agents involves:
+Converting domain-specific entities to framework agents:
 
 1. **Identify Entity Characteristics**:
-   - Determine what makes each entity unique
-   - Identify the state that needs to be maintained
-   - Determine the behaviors that need to be implemented
+   - Determine the core attributes and state of each entity
+   - Identify behavior patterns and decision-making logic
+   - Map relationships with other entities
 
-2. **Create Agent Types**:
-   - Create a custom agent type for each entity type
-   - Define the attributes and state structure
-   - Implement the required behaviors
+2. **Create Agent Classes**:
+   - Define a base agent class for common behavior
+   - Create specialized agent classes for domain-specific behavior
+   - Implement domain-specific decision making
 
-3. **Implement Decision Logic**:
-   - Convert existing decision logic to the `generate_action` method
-   - Implement event processing in the `process_event` method
-   - Use agent state to store entity-specific information
+3. **Implement Event Processing**:
+   ```python
+   def process_event(self, event):
+       # Common event processing logic
+       self.memory_manager.create_memory_from_event(event)
+       
+       # Domain-specific event processing
+       if hasattr(self, f"_process_{event.event_type}_event"):
+           processing_method = getattr(self, f"_process_{event.event_type}_event")
+           return processing_method(event)
+       
+       return None
+   ```
+
+4. **Implement Action Generation**:
+   ```python
+   def generate_action(self):
+       # Get current state
+       state = self.get_state()
+       
+       # Domain-specific action generation
+       if state.get("current_role") == "speaker":
+           return self._generate_speech_action()
+       elif state.get("current_role") == "voter":
+           return self._generate_vote_action()
+       
+       return None
+   ```
 
 ### Memory Management
 
-Converting existing memory mechanisms involves:
+Implementing memory systems for agents:
 
-1. **Identify Memory Types**:
-   - Determine what information needs to be remembered
-   - Identify how memories are currently stored
-   - Determine how memories are retrieved and used
+1. **Identify Information to Remember**:
+   - Determine what information agents need to remember
+   - Classify information by type and importance
+   - Define how memories decay over time
 
 2. **Create Memory Types**:
-   - Create custom memory types for different kinds of information
-   - Define the structure and associations for each memory type
-   - Implement memory creation and retrieval
+   - Define base memory structure
+   - Create specialized memory types for domain-specific information
+   - Implement memory importance and decay
 
-3. **Implement Memory Usage**:
-   - Use memories in agent decision-making
-   - Implement memory importance and forgetting
-   - Use memory associations for efficient retrieval
+3. **Implement Memory Storage and Retrieval**:
+   ```python
+   def retrieve_memories(self, query):
+       # Filter memories based on query
+       matching_memories = []
+       
+       for memory in self.memories.values():
+           if memory.matches_query(query):
+               matching_memories.append(memory)
+       
+       # Sort by relevance (combination of importance and recency)
+       matching_memories.sort(
+           key=lambda m: m.importance * (1.0 / (1.0 + time.time() - m.timestamp)),
+           reverse=True
+       )
+       
+       return matching_memories[:query.get("limit", 10)]
+   ```
+
+4. **Create Memories from Events**:
+   ```python
+   def create_memory_from_event(self, event):
+       # Create memory based on event type
+       if event.event_type == "speech":
+           return SpeechMemory(
+               memory_id=f"speech_{str(uuid.uuid4())}",
+               timestamp=time.time(),
+               event=event,
+               importance=self._calculate_importance(event)
+           )
+       
+       return None
+   ```
 
 ### Relationship Modeling
 
-Converting existing relationship mechanisms involves:
+Implementing relationship systems for agents:
 
 1. **Identify Relationship Types**:
-   - Determine what kinds of relationships exist
-   - Identify how relationships are currently represented
-   - Determine how relationships affect behavior
+   - Determine the types of relationships between agents
+   - Define attributes for each relationship type
+   - Determine how relationships change over time
 
-2. **Create Relationship Types**:
-   - Create custom relationship types for different kinds of connections
-   - Define the attributes and structure for each relationship type
-   - Implement relationship creation and updating
+2. **Create Relationship Classes**:
+   - Define base relationship structure
+   - Create specialized relationship classes for domain-specific relationships
+   - Implement relationship dynamics
 
-3. **Implement Relationship Usage**:
-   - Use relationships in agent decision-making
-   - Implement relationship strength and attributes
-   - Update relationships based on events
+3. **Track Relationship Changes**:
+   ```python
+   def update_relationship_from_event(self, event):
+       # Identify agents involved
+       source_id = event.source
+       target_id = event.target
+       
+       # Get their relationship
+       relationship = self.get_relationship(source_id, target_id)
+       
+       if relationship:
+           # Update relationship based on event type
+           if event.event_type == "speech":
+               agreement_factor = self._calculate_agreement(event)
+               relationship.update_strength(agreement_factor * 0.1)
+               relationship.update_attribute("respect", 0.05)
+   ```
+
+4. **Use Relationships in Decision Making**:
+   ```python
+   def decide_vote(self, topic, proposer_id):
+       # Get relationship with proposer
+       relationship = self.relationship_manager.get_relationship(self.id, proposer_id)
+       
+       # Base decision on relationship and topic alignment
+       if relationship and relationship.get_strength() > 0.7:
+           # Vote with ally
+           return "support"
+       elif self._calculate_topic_alignment(topic) > 0.8:
+           # Vote based on topic alignment
+           return "support"
+       
+       return "oppose"
+   ```
+
+### Dual-Mode Operation
+
+Implementing the ability to run in both legacy and new architectures:
+
+1. **Create Architecture Bridges**:
+   - Implement bridges between old and new components
+   - Define data conversion methods
+   - Establish communication channels
+
+2. **Implement Mode Selection**:
+   ```python
+   def run_simulation(self, mode="new"):
+       if mode == "legacy":
+           return self._run_legacy_simulation()
+       elif mode == "new":
+           return self._run_new_simulation()
+       elif mode == "hybrid":
+           return self._run_hybrid_simulation()
+       else:
+           raise ValueError(f"Unknown mode: {mode}")
+   ```
+
+3. **Create Event Translators**:
+   ```python
+   def translate_legacy_message(self, message):
+       if message["type"] == "speech":
+           return SpeechEvent(
+               source=message["sender"],
+               topic=message["topic"],
+               content=message["content"]
+           )
+       
+       return None
+   ```
+
+4. **Build Compatibility Layers**:
+   ```python
+   class LegacyCompatibilityLayer:
+       def __init__(self, event_bus):
+           self.event_bus = event_bus
+           
+           # Subscribe to new events to convert to legacy format
+           self.event_bus.subscribe("speech", self._handle_speech_event)
+           
+       def _handle_speech_event(self, event):
+           # Convert to legacy format
+           legacy_message = {
+               "type": "speech",
+               "sender": event.source,
+               "topic": event.data.get("topic"),
+               "content": event.data.get("content")
+           }
+           
+           # Call legacy handlers
+           for handler in self.legacy_handlers:
+               handler(legacy_message)
+   ```
 
 ## Migration Challenges
 
-This section addresses common challenges that may arise during migration.
+These sections address common challenges you may encounter during migration and how to overcome them.
 
 ### Architectural Differences
 
-Differences in architecture can pose challenges:
-
-1. **Synchronous vs. Asynchronous**:
-   - The framework uses asynchronous event-based communication
-   - Existing systems may use synchronous method calls
-   - Solution: Convert synchronous calls to event publishing and handling
+1. **Synchronous vs. Asynchronous Communication**:
+   - **Challenge**: Converting synchronous method calls to asynchronous events
+   - **Solution**: Use callbacks or promises to handle asynchronous responses
 
 2. **Centralized vs. Distributed State**:
-   - The framework uses distributed state in agents
-   - Existing systems may use centralized state
-   - Solution: Distribute state among agents and use events for coordination
+   - **Challenge**: Moving from centralized state to distributed agent state
+   - **Solution**: Break down global state into agent-specific state
 
-3. **Object-Oriented vs. Component-Based**:
-   - The framework uses a component-based approach
-   - Existing systems may use a traditional object-oriented approach
-   - Solution: Decompose objects into components and use composition
+3. **Procedural vs. Event-Driven Logic**:
+   - **Challenge**: Converting procedural code to event-driven logic
+   - **Solution**: Identify decision points and convert them to event handlers
 
 ### Data Migration
 
-Migrating existing data can be challenging:
-
 1. **State Conversion**:
-   - Convert existing state to agent state and memory
-   - Ensure that all necessary information is preserved
-   - Solution: Create a mapping between old and new state structures
+   - **Challenge**: Mapping legacy state to new state format
+   - **Solution**: Create state conversion functions with validation
 
-2. **Relationship Conversion**:
-   - Convert existing relationships to framework relationships
-   - Ensure that relationship history is preserved
-   - Solution: Create a mapping between old and new relationship structures
+2. **Relationship Data**:
+   - **Challenge**: Converting existing relationship data to new format
+   - **Solution**: Build data migration scripts with integrity checks
 
-3. **Event History**:
-   - Convert existing event logs to framework events
-   - Ensure that event history is preserved
-   - Solution: Create a mapping between old and new event structures
+3. **Memory Conversion**:
+   - **Challenge**: Converting existing memory data to new format
+   - **Solution**: Create memory conversion utilities with priority assignment
 
 ### Performance Considerations
 
-Performance can be affected during migration:
-
-1. **Event Processing Overhead**:
-   - Event-based communication can introduce overhead
-   - Solution: Use event batching and filtering to reduce overhead
+1. **Event Volume**:
+   - **Challenge**: Handling large numbers of events efficiently
+   - **Solution**: Implement event batching and filtering
 
 2. **Memory Usage**:
-   - Storing memories for many agents can increase memory usage
-   - Solution: Implement memory pruning and importance-based retention
+   - **Challenge**: Managing memory for large numbers of agents
+   - **Solution**: Implement agent pooling and memory pruning
 
-3. **Relationship Matrix Size**:
-   - Storing relationships between many agents can lead to a large matrix
-   - Solution: Use sparse relationship storage and relationship pruning
+3. **Scaling Agents**:
+   - **Challenge**: Scaling to support thousands of agents
+   - **Solution**: Implement agent groups and optimize update cycles
 
 ## Post-Migration Optimization
 
-After migration, optimization can improve performance and maintainability:
+After migrating your system, consider these optimizations to improve performance and maintainability:
 
 1. **Event Optimization**:
-   - Use event filtering to reduce unnecessary processing
-   - Implement event batching for better performance
-   - Use event prioritization for critical events
+   - Analyze event flow and eliminate unnecessary events
+   - Batch similar events to reduce processing overhead
+   - Implement more specific event filtering
 
-2. **Memory Optimization**:
-   - Implement memory consolidation to reduce storage
-   - Use memory importance to prioritize retrieval
-   - Implement memory pruning to remove less important memories
+2. **Memory Management**:
+   - Fine-tune memory importance calculations
+   - Optimize memory retrieval queries
+   - Implement more sophisticated memory consolidation
 
 3. **Relationship Optimization**:
+   - Implement relationship caching for frequently accessed relationships
+   - Optimize relationship updates to minimize calculations
    - Use sparse relationship storage for large agent populations
-   - Implement relationship pruning to remove weak relationships
-   - Use relationship caching for frequently accessed relationships
 
-4. **Agent Optimization**:
-   - Implement agent pooling for better resource usage
-   - Use agent scheduling to distribute processing load
-   - Implement lazy initialization for agent components
+4. **Agent Processing**:
+   - Implement agent prioritization based on activity
+   - Optimize agent update cycles based on importance
+   - Use agent pooling to manage inactive agents
+
+5. **Monitoring and Profiling**:
+   - Implement comprehensive monitoring for event processing
+   - Profile agent processing to identify bottlenecks
+   - Monitor memory usage and optimize accordingly
 
 ## References
 
-- [Roman Senate Migration Plan](../../roman_senate_migration_plan.md)
-- [Abstracted Agentic Game Architecture](../../abstracted_agentic_game_architecture.md)
-- [Architecture Guide](architecture.md)
-- [Developer Guide](developer_guide.md)
+1. Event-Driven Architecture in Game AI Systems
+2. Agent-Based Modeling and Simulation
+3. Memory Systems for Intelligent Agents
+4. Relationship Modeling in Multi-Agent Systems
+5. Domain-Driven Design in Game Development
+6. Roman Senate Architecture Migration Plan
+7. Integration Patterns for Legacy Systems

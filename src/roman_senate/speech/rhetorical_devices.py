@@ -370,9 +370,86 @@ def apply_multiple_devices(text: str, devices: List[str]) -> Tuple[str, List[str
 
 # Function to suggest appropriate devices based on text content
 def suggest_devices(text: str, count: int = 3) -> List[str]:
-    """Suggest appropriate rhetorical devices based on text content."""
-    # TODO: Implement more sophisticated suggestion logic
-    return random.sample(list(RHETORICAL_DEVICES.keys()), min(count, len(RHETORICAL_DEVICES)))
+    """
+    Suggest appropriate rhetorical devices based on text content.
+    Analyzes the text to determine which rhetorical devices would be most appropriate.
+    
+    Args:
+        text: The text to analyze
+        count: Number of devices to suggest
+        
+    Returns:
+        List of device names that would be most effective for this text
+    """
+    # Get basic rhetoric analysis
+    rhetoric_scores = analyze_rhetoric(text)
+    
+    # Content-based scoring
+    content_scores = {}
+    
+    # Check for contrast opportunities (good for antithesis, chiasmus)
+    contrast_words = ["but", "however", "yet", "although", "nonetheless", "despite", "contrary", "opposite", "unlike"]
+    contrast_score = sum(1 for word in contrast_words if word in text.lower()) / len(text.split())
+    content_scores["antithesis"] = contrast_score * 3
+    content_scores["chiasmus"] = contrast_score * 2
+    
+    # Check for argument structure (good for ratiocinatio, distributio)
+    argument_words = ["therefore", "thus", "consequently", "first", "second", "finally", "conclude", "reason", "because"]
+    argument_score = sum(1 for word in argument_words if word in text.lower()) / len(text.split())
+    content_scores["ratiocinatio"] = argument_score * 3
+    content_scores["distributio"] = argument_score * 3
+    
+    # Check for emotional content (good for pathos, exclamatio)
+    emotional_words = ["fear", "hope", "despair", "joy", "sorrow", "anger", "love", "hate", "proud", "shame"]
+    emotion_score = sum(1 for word in emotional_words if word in text.lower()) / len(text.split())
+    content_scores["pathos"] = emotion_score * 3
+    content_scores["exclamatio"] = emotion_score * 2
+    
+    # Check for references to history, tradition, examples (good for exemplum, sententia)
+    reference_words = ["history", "ancestor", "tradition", "example", "lesson", "learn", "remember", "forget", "past"]
+    reference_score = sum(1 for word in reference_words if word in text.lower()) / len(text.split())
+    content_scores["exemplum"] = reference_score * 3
+    content_scores["sententia"] = reference_score * 2
+    
+    # Text length and complexity considerations
+    sentences = [s for s in re.split(r'[.!?]\s*', text) if s]
+    
+    # Anaphora works well with multiple sentences
+    if len(sentences) >= 3:
+        content_scores["anaphora"] = 0.8
+    
+    # Tricolon works well with shorter texts that need emphasis
+    if len(sentences) <= 5:
+        content_scores["tricolon"] = 0.7
+    
+    # Rhetorical questions work well for engagement
+    content_scores["rhetorical_question"] = 0.6
+    
+    # For very short texts, prefer emphasis devices
+    if len(sentences) <= 2:
+        content_scores["hyperbole"] = 0.8
+        content_scores["exclamatio"] = 0.8
+    
+    # Combine scores (existing analysis + content-based scoring)
+    combined_scores = {}
+    
+    # Start with all devices having a base score
+    for device in RHETORICAL_DEVICES:
+        combined_scores[device] = 0.2  # Base score
+    
+    # Add rhetoric analysis scores (if available)
+    for device, score in rhetoric_scores.items():
+        if device in combined_scores:
+            combined_scores[device] += score
+    
+    # Add content-based scores
+    for device, score in content_scores.items():
+        if device in combined_scores:
+            combined_scores[device] += score
+    
+    # Sort devices by score and return top 'count'
+    sorted_devices = sorted(combined_scores.items(), key=lambda x: x[1], reverse=True)
+    return [device for device, _ in sorted_devices[:count]]
 
 # Function to analyze text for existing rhetorical devices
 def analyze_rhetoric(text: str) -> Dict[str, float]:

@@ -23,11 +23,11 @@ if project_dir not in sys.path:
     sys.path.insert(0, project_dir)
 
 # Import the CLI app after setting the correct path
-from src.roman_senate.cli import app as legacy_app
+from src.roman_senate.cli import app as senate_app, USE_FRAMEWORK
 from src.roman_senate.utils.logging_utils import setup_logging
 
-# Create a new Typer app for the framework-based implementation
-app = typer.Typer(help="Roman Senate AI Simulation Game (Framework Edition)")
+# Create a unified Typer app
+app = typer.Typer(help="Roman Senate AI Simulation Game - Unified CLI")
 
 # Set up logging
 logger = None
@@ -36,23 +36,32 @@ logger = None
 def main(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Increase output verbosity"),
     log_level: str = typer.Option(None, "--log-level", help="Set logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)"),
-    log_file: str = typer.Option(None, "--log-file", help="Custom log file path")
+    log_file: str = typer.Option(None, "--log-file", help="Custom log file path"),
+    use_framework: bool = typer.Option(True, "--use-framework/--use-legacy", help="Use the new Agentic Game Framework architecture")
 ):
     """
     Roman Senate AI Simulation Game - A political simulation set in ancient Rome
     
-    This version uses the new Agentic Game Framework for enhanced simulation capabilities.
+    This script supports both the legacy architecture and the new Agentic Game Framework.
+    By default, it uses the new framework, but you can switch to legacy mode with --use-legacy.
     """
     global logger
     
     # Set up logging early
     logger = setup_logging(log_level=log_level, log_file=log_file, verbose=verbose)
     
+    # Set the framework flag in the imported CLI module
+    # This will affect all commands that use it
+    import src.roman_senate.cli
+    src.roman_senate.cli.USE_FRAMEWORK = use_framework
+    
     # Log application startup
-    logger.info("Roman Senate AI Game (Framework Edition) starting")
+    architecture = "Agentic Framework" if use_framework else "Legacy"
+    logger.info(f"Roman Senate AI Game ({architecture} architecture) starting")
     
     # Display version info and environment
-    typer.echo(typer.style("Roman Senate AI Game (Framework Edition)", fg="cyan", bold=True))
+    typer.echo(typer.style("Roman Senate AI Game", fg="cyan", bold=True))
+    typer.echo(typer.style(f"Architecture: {architecture}", fg="green", bold=use_framework))
     
     # Ensure correct working directory
     ensure_correct_path()
@@ -77,9 +86,15 @@ def simulate(
     topics: int = typer.Option(3, help="Number of topics to debate"),
     year: int = typer.Option(-100, help="Year in Roman history (negative for BCE)"),
     provider: str = typer.Option("mock", help="LLM provider (mock, openai, ollama)"),
-    model: str = typer.Option(None, help="LLM model name")
+    model: str = typer.Option(None, help="LLM model name"),
+    non_interactive: bool = typer.Option(False, help="Run in non-interactive mode (for CI/CD testing)")
 ):
-    """Run a simulation of the Roman Senate using the new framework."""
+    """
+    Run a simulation of the Roman Senate.
+    
+    This command will use either the legacy or framework architecture based on
+    the --use-framework/--use-legacy global flag.
+    """
     try:
         # Convert parameters to integers (typer does this automatically, but keeping for safety)
         senators_int = int(senators)
@@ -87,11 +102,28 @@ def simulate(
         topics_int = int(topics)
         year_int = int(year)
         
-        # Log simulation command execution
-        logger.info(f"Starting framework simulation: senators={senators_int}, debate_rounds={debate_rounds_int}, topics={topics_int}, year={year_int}")
+        # Get the current architecture mode from the CLI module
+        import src.roman_senate.cli
+        using_framework = src.roman_senate.cli.USE_FRAMEWORK
         
-        # Run the async simulation function with asyncio.run
-        asyncio.run(run_framework_simulation(senators_int, debate_rounds_int, topics_int, year_int, provider, model))
+        # Log simulation command execution
+        architecture = "Agentic Framework" if using_framework else "Legacy"
+        logger.info(f"Starting {architecture} simulation: senators={senators_int}, debate_rounds={debate_rounds_int}, topics={topics_int}, year={year_int}")
+        
+        # Use the unified CLI to run the simulation with the current framework setting
+        # This avoids duplicating code between the scripts and CLI
+        from src.roman_senate.cli import simulate as cli_simulate
+        cli_simulate(
+            senators=senators_int,
+            debate_rounds=debate_rounds_int,
+            topics=topics_int,
+            year=year_int,
+            non_interactive=non_interactive,
+            provider=provider,
+            model=model,
+            use_framework=using_framework,
+            verbose=False
+        )
     except Exception as e:
         error_msg = f"Fatal simulation error: {str(e)}"
         logger.error(error_msg)
@@ -109,111 +141,130 @@ def simulate(
         
         typer.echo("\nSimulation terminated. Type 'python run_senate.py simulate' to try again.\n")
 
-async def run_framework_simulation(
-    senators: int = 10,
-    debate_rounds: int = 3,
-    topics: int = 3,
-    year: int = -100,
-    provider: str = None,
-    model: str = None
+@app.command(name="play")
+def play(
+    senators: int = typer.Option(10, help="Number of senators to simulate"),
+    debate_rounds: int = typer.Option(3, help="Number of debate rounds per topic"),
+    topics: int = typer.Option(3, help="Number of topics to debate"),
+    year: int = typer.Option(-100, help="Year in Roman history (negative for BCE)"),
+    provider: str = typer.Option(None, help="LLM provider to use (defaults to config)"),
+    model: str = typer.Option(None, help="LLM model to use (defaults to config)")
 ):
     """
-    Run a simulation using the new framework.
+    Start a new game session of the Roman Senate simulation.
     
-    Args:
-        senators: Number of senators to simulate
-        debate_rounds: Number of debate rounds per topic
-        topics: Number of topics to debate
-        year: Year in Roman history (negative for BCE)
-        provider: LLM provider name
-        model: LLM model name
+    This command will use either the legacy or framework architecture based on
+    the --use-framework/--use-legacy global flag.
     """
-    # Import the framework simulation
-    from src.roman_senate_framework.domains.senate.simulation import run_simulation
-    
-    # Import LLM provider
-    llm_provider = None
-    if provider:
-        if provider.lower() == "mock":
-            from src.roman_senate.utils.llm.mock_provider import MockProvider
-            llm_provider = MockProvider()
-        elif provider.lower() == "openai":
-            from src.roman_senate.utils.llm.openai_provider import OpenAIProvider
-            llm_provider = OpenAIProvider(model=model or "gpt-3.5-turbo")
-        elif provider.lower() == "ollama":
-            from src.roman_senate.utils.llm.ollama_provider import OllamaProvider
-            llm_provider = OllamaProvider(model=model or "llama2")
-    
-    # Generate topics
-    # In a real implementation, we would use a topic generator
-    # For now, we'll use some hardcoded topics
-    debate_topics = [
-        "The expansion of Roman citizenship to Italian allies",
-        "Funding for new aqueducts in Rome",
-        "Military reforms proposed by the consul",
-        "Land redistribution to veterans",
-        "Grain subsidies for the urban poor"
-    ]
-    
-    # Use only the requested number of topics
-    selected_topics = debate_topics[:topics]
-    
-    # Configuration
-    config = {
-        "year": year,
-        "topics": selected_topics,
-        "factions": ["Optimates", "Populares", "Neutral"],
-        "debate": {
-            "max_rounds": debate_rounds,
-            "speech_time_limit": 120,
-            "interjection_limit": 2,
-            "reaction_limit": 5
-        }
-    }
-    
-    typer.echo(typer.style("\nStarting Roman Senate Simulation", fg="cyan", bold=True))
-    typer.echo(f"Year: {abs(year)} BCE")
-    typer.echo(f"Senators: {senators}")
-    typer.echo(f"Topics: {len(selected_topics)}")
-    typer.echo(f"Debate Rounds: {debate_rounds} per topic\n")
-    
-    # Run the simulation
-    results = await run_simulation(
-        num_senators=senators,
-        topics=selected_topics,
-        rounds_per_topic=debate_rounds,
-        llm_provider=llm_provider,
-        config=config
-    )
-    
-    # Display results
-    typer.echo(typer.style("\nSimulation Results:", fg="green", bold=True))
-    for result in results:
-        topic = result["topic"]
-        speeches = result["speeches"]
-        reactions = result["reactions"]
-        interjections = result["interjections"]
+    try:
+        # Convert parameters to integers
+        senators_int = int(senators)
+        debate_rounds_int = int(debate_rounds)
+        topics_int = int(topics)
+        year_int = int(year)
         
-        typer.echo(typer.style(f"\nTopic: {topic}", fg="yellow"))
-        typer.echo(f"Speeches: {speeches}")
-        typer.echo(f"Reactions: {reactions}")
-        typer.echo(f"Interjections: {interjections}")
+        # Get the current architecture mode from the CLI module
+        import src.roman_senate.cli
+        using_framework = src.roman_senate.cli.USE_FRAMEWORK
         
-        # Display stance distribution
-        stances = result.get("stances", {})
-        support_count = sum(1 for stance in stances.values() if stance == "support")
-        oppose_count = sum(1 for stance in stances.values() if stance == "oppose")
-        neutral_count = sum(1 for stance in stances.values() if stance == "neutral")
+        # Log game command execution
+        architecture = "Agentic Framework" if using_framework else "Legacy"
+        logger.info(f"Starting play mode ({architecture}): senators={senators_int}, debate_rounds={debate_rounds_int}, topics={topics_int}, year={year_int}")
         
-        typer.echo(f"Stance Distribution: {support_count} support, {oppose_count} oppose, {neutral_count} neutral")
-    
-    typer.echo(typer.style("\nSimulation completed successfully!", fg="green", bold=True))
+        # Use the unified CLI to run the game with the current framework setting
+        from src.roman_senate.cli import play as cli_play
+        cli_play(
+            senators=senators_int,
+            debate_rounds=debate_rounds_int,
+            topics=topics_int,
+            year=year_int,
+            provider=provider,
+            model=model,
+            verbose=False
+        )
+    except Exception as e:
+        error_msg = f"Fatal game error: {str(e)}"
+        logger.error(error_msg)
+        typer.echo(typer.style(f"\n{error_msg}", fg="red", bold=True))
+        
+        # Add detailed traceback for debugging
+        import traceback
+        trace = traceback.format_exc()
+        logger.error(f"Traceback:\n{trace}")
+        
+        typer.echo(typer.style("\nDetailed Error Information:", fg="yellow", bold=True))
+        typer.echo(trace)
+        typer.echo(typer.style(f"\nError Type:", fg="cyan", bold=True) + f" {type(e).__name__}")
+        typer.echo(typer.style(f"Error Location:", fg="cyan", bold=True) + f" Look for 'File' and line number in traceback above")
+        
+        typer.echo("\nGame session terminated. Type 'python run_senate.py play' to try again.\n")
 
-@app.command(name="legacy")
-def legacy():
-    """Run the legacy version of the Roman Senate simulation."""
-    # Just pass through to the legacy CLI
-    legacy_app()
+@app.command(name="play-as-senator")
+def play_as_senator(
+    senators: int = typer.Option(9, help="Number of NPC senators to simulate (plus you)"),
+    topics: int = typer.Option(3, help="Number of topics to debate"),
+    year: int = typer.Option(-100, help="Year in Roman history (negative for BCE)"),
+    provider: str = typer.Option(None, help="LLM provider to use (defaults to config)"),
+    model: str = typer.Option(None, help="LLM model to use (defaults to config)")
+):
+    """
+    Start a new game as a Roman Senator, allowing you to participate in debates and votes.
+    
+    This command will use either the legacy or framework architecture based on
+    the --use-framework/--use-legacy global flag.
+    """
+    try:
+        # Convert parameters to integers
+        senators_int = int(senators)
+        topics_int = int(topics)
+        year_int = int(year)
+        
+        # Get the current architecture mode from the CLI module
+        import src.roman_senate.cli
+        using_framework = src.roman_senate.cli.USE_FRAMEWORK
+        
+        # Log player game command execution
+        architecture = "Agentic Framework" if using_framework else "Legacy"
+        logger.info(f"Starting player mode ({architecture}): senators={senators_int}, topics={topics_int}, year={year_int}")
+        
+        # Use the unified CLI to run the player game with the current framework setting
+        from src.roman_senate.cli import play_as_senator as cli_play_as_senator
+        cli_play_as_senator(
+            senators=senators_int,
+            topics=topics_int,
+            year=year_int,
+            provider=provider,
+            model=model,
+            verbose=False
+        )
+    except Exception as e:
+        error_msg = f"Fatal game error: {str(e)}"
+        logger.error(error_msg)
+        typer.echo(typer.style(f"\n{error_msg}", fg="red", bold=True))
+        
+        # Add detailed traceback for debugging
+        import traceback
+        trace = traceback.format_exc()
+        logger.error(f"Traceback:\n{trace}")
+        
+        typer.echo(typer.style("\nDetailed Error Information:", fg="yellow", bold=True))
+        typer.echo(trace)
+        typer.echo(typer.style(f"\nError Type:", fg="cyan", bold=True) + f" {type(e).__name__}")
+        typer.echo(typer.style(f"Error Location:", fg="cyan", bold=True) + f" Look for 'File' and line number in traceback above")
+        
+        typer.echo("\nGame session terminated. Type 'python run_senate.py play-as-senator' to try again.\n")
+
+@app.command(name="info")
+def info():
+    """Display information about the game and available commands."""
+    # Call the info command from the main CLI
+    from src.roman_senate.cli import info as cli_info
+    cli_info()
+    
+    # Add script-specific information
+    typer.echo("\n" + typer.style("Additional Script Information:", fg="cyan", bold=True))
+    typer.echo("This unified script allows you to use both architectures via the --use-framework/--use-legacy flags.")
+    typer.echo("By default, the new Agentic Game Framework architecture is used.")
 
 # Run the typer CLI app
 if __name__ == "__main__":

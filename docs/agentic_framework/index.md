@@ -1,126 +1,118 @@
 # Agentic Game Framework Documentation
 
 **Author:** Documentation Team  
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Date:** April 19, 2025
 
-## Overview
+## Introduction
 
-The Agentic Game Framework is a domain-agnostic framework for building agent-based game systems and simulations. It provides a flexible foundation for creating complex, interactive agent systems across different domains, allowing developers to focus on domain-specific logic rather than infrastructure.
+Welcome to the Agentic Game Framework documentation. This documentation provides comprehensive information about the framework's architecture, usage, and migration process.
 
-This framework was developed based on lessons learned from the Roman Senate simulation and designed to support thousands of diverse agents across multiple domains. It abstracts common patterns and components found in agent systems, making it easier to create, extend, and maintain agent-based simulations.
+The Agentic Game Framework is a flexible, extensible system for building agent-based game simulations across multiple domains. It provides a foundation for creating complex, interactive agent systems with sophisticated event processing, memory systems, and relationship tracking.
 
-## Key Features
+## Documentation Overview
 
-- **Event-Driven Architecture**: Decoupled components communicate through events
-- **Flexible Agent System**: Customizable agent behaviors and decision-making
-- **Memory System**: Efficient storage and retrieval of agent knowledge
-- **Relationship System**: Dynamic modeling of connections between agents
-- **Domain Adaptation Layer**: Extension points for domain-specific implementations
-- **Scalability**: Designed to support 1000-2000 agents efficiently
+The framework documentation is organized into several main sections:
 
-## Core Components
+### Architecture Documentation
 
-```mermaid
-flowchart TD
-    subgraph "Core Systems Layer"
-        ES[Event System]
-        AS[Agent System]
-        MS[Memory System]
-        RS[Relationship System]
-        DM[Decision Making]
-    end
+[Architecture Documentation](architecture.md) - Detailed information about the framework's architecture, including the core systems layer, domain adaptation layer, integration layer, and domain implementations.
 
-    subgraph "Domain Adaptation Layer"
-        DR[Domain Registry]
-        EP[Extension Points]
-        EC[Event Converters]
-    end
+**Key topics:**
+- Event System
+- Agent System
+- Memory System
+- Relationship System
+- Domain Adaptation
+- Integration Layer
+- Performance and Scalability
 
-    subgraph "Domain-Specific Implementations"
-        SD[Senate Domain]
-        SGD[Strategy Game Domain]
-        CD[Custom Domains...]
-    end
+### User Guide
 
-    ES <--> AS
-    ES <--> MS
-    ES <--> RS
-    ES <--> DM
-    AS <--> MS
-    AS <--> RS
-    AS <--> DM
-    
-    ES <--> DR
-    AS <--> DR
-    MS <--> DR
-    RS <--> DR
-    
-    DR <--> EP
-    DR <--> EC
-    
-    EP <--> SD
-    EP <--> SGD
-    EP <--> CD
-    
-    EC <--> SD
-    EC <--> SGD
-    EC <--> CD
-```
+[User Guide](user_guide.md) - Practical guide for using the framework, including installation, configuration, and examples.
+
+**Key topics:**
+- Installation
+- Architecture Overview
+- Getting Started
+- Core Concepts
+- Using Existing Domains
+- Creating Your Own Domain
+- CLI Reference
+- Troubleshooting
+
+### Migration Guide
+
+[Migration Guide](migration_guide.md) - Comprehensive guide for migrating existing systems to the Agentic Game Framework.
+
+**Key topics:**
+- Migration Strategy
+- Completed Migration Phases
+- Roman Senate Migration Case Study
+- Migration Patterns
+- Migration Challenges
+- Post-Migration Optimization
+
+### API Reference
+
+[API Reference](api_reference.md) - Detailed reference documentation for the framework's APIs.
+
+**Key topics:**
+- Event System API
+- Agent System API
+- Memory System API
+- Relationship System API
+- Domain Registry API
+- Extension Points API
+
+### Examples
+
+[Examples](examples.md) - Practical examples showing how to use the framework for different scenarios.
+
+**Key topics:**
+- Simple Simulation
+- Senate Simulation
+- Marketplace Simulation
+- Custom Domain Implementation
+- Cross-Domain Integration
+
+## Core Systems
+
+The framework is built around several core systems:
 
 ### Event System
 
-The event system serves as the backbone of the architecture, facilitating communication between components:
-
-- `BaseEvent`: Abstract base class for all events
-- `EventBus`: Central event dispatcher for publishing and subscribing to events
+The Event System is the backbone of the architecture, enabling communication between agents and components through event-based messaging.
 
 ### Agent System
 
-The agent system manages the creation, configuration, and lifecycle of agents:
-
-- `BaseAgent`: Abstract base class for all agents
-- `AgentFactory`: Creates agents based on templates or configurations
-- `AgentManager`: Manages collections of agents
+The Agent System manages the creation, lifecycle, and processing of agents, providing a framework for creating different types of agents with consistent interfaces.
 
 ### Memory System
 
-The memory system handles the storage and retrieval of agent memories and experiences:
-
-- `MemoryInterface`: Abstract interface for memory implementations
-- `MemoryItem`: Base class for memory entries
-- `MemoryIndex`: Efficient memory retrieval system
-- `MemoryPersistenceManager`: Handles saving and loading memories
+The Memory System handles storage and retrieval of agent memories and experiences, allowing agents to remember past events and learn from experiences.
 
 ### Relationship System
 
-The relationship system manages the connections and interactions between agents:
+The Relationship System tracks and manages relationships between agents, modeling social connections and dynamics.
 
-- `BaseRelationship`: Abstract base class for agent relationships
-- `RelationshipManager`: Manages collections of relationships
+## Architecture Modes
 
-### Domain Adaptation Layer
+The framework supports multiple architectural modes:
 
-The domain adaptation layer allows the core architecture to be extended for specific game domains:
+- **Legacy Mode** - Uses the original architecture for backward compatibility
+- **New Mode** - Uses the new event-driven architecture for new development
+- **Hybrid Mode** - Runs both architectures in parallel for migration and comparison
 
-- `DomainRegistry`: Registry of domain-specific components
-- `DomainExtensionPoint`: Defined interfaces for domain-specific extensions
+## Getting Help
 
-## Documentation Contents
+If you need additional help beyond what's provided in this documentation:
 
-- [Architecture Guide](architecture.md): Detailed explanation of the framework architecture
-- [Developer Guide](developer_guide.md): How to use and extend the framework
-- [User Guide](user_guide.md): Getting started with the framework
-- [API Reference](api_reference.md): Detailed documentation of framework APIs
-- [Examples and Tutorials](examples.md): Sample implementations and walkthroughs
-- [Migration Guide](migration_guide.md): How to migrate existing systems to the framework
+- Check the [Troubleshooting](user_guide.md#troubleshooting) section in the User Guide
+- Review the [Examples](examples.md) for practical usage scenarios
+- Consult the [API Reference](api_reference.md) for detailed method signatures
+- Contact the development team at framework-support@example.com
 
-## Getting Started
+## Contributing
 
-To get started with the Agentic Game Framework, see the [User Guide](user_guide.md) for installation instructions and basic usage examples.
-
-For developers looking to extend the framework, the [Developer Guide](developer_guide.md) provides detailed information on creating custom components and implementing domain-specific logic.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+We welcome contributions to both the framework and its documentation. Please see our contribution guidelines for more information.

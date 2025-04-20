@@ -227,7 +227,14 @@ def play(
                 asyncio.run(play_async(senators_int, debate_rounds_int, topics_int, year_int))
         else:
             # Run the legacy async play function
-            console.print("[dim]Using legacy architecture[/]")
+            import warnings
+            warnings.warn(
+                "Using legacy architecture which is deprecated and will be removed in a future version. "
+                "Please use the new Agentic Game Framework by adding --use-framework flag.",
+                DeprecationWarning, stacklevel=2
+            )
+            console.print("[bold yellow]DEPRECATED:[/] [dim]Using legacy architecture which will be removed in a future version.[/]")
+            console.print("[dim]Please use --use-framework flag to use the new Agentic Game Framework.[/]")
             asyncio.run(play_async(senators_int, debate_rounds_int, topics_int, year_int))
     except Exception as e:
         error_msg = f"Fatal game error: {str(e)}"
@@ -420,7 +427,14 @@ def play_as_senator(
                 asyncio.run(player_loop.start_game(senators_int, topics_int, year_int))
         else:
             # Use the legacy player game loop
-            console.print("[dim]Using legacy architecture for interactive mode[/]")
+            import warnings
+            warnings.warn(
+                "Using legacy architecture for interactive mode which is deprecated and will be removed in a future version. "
+                "Please use the new Agentic Game Framework by adding --use-framework flag.",
+                DeprecationWarning, stacklevel=2
+            )
+            console.print("[bold yellow]DEPRECATED:[/] [dim]Using legacy architecture for interactive mode which will be removed in a future version.[/]")
+            console.print("[dim]Please use --use-framework flag to use the new Agentic Game Framework.[/]")
             
             # Import player game loop here to avoid circular imports
             if is_running_directly:
@@ -499,7 +513,14 @@ def simulate(
             asyncio.run(run_framework_simulation(senators_int, debate_rounds_int, topics_int, year_int, provider, model))
         else:
             # Run simulation with the traditional system
-            console.print("[dim]Using legacy architecture[/]")
+            import warnings
+            warnings.warn(
+                "Using legacy architecture for simulation which is deprecated and will be removed in a future version. "
+                "Please use the new Agentic Game Framework by adding --use-framework flag.",
+                DeprecationWarning, stacklevel=2
+            )
+            console.print("[bold yellow]DEPRECATED:[/] [dim]Using legacy architecture for simulation which will be removed in a future version.[/]")
+            console.print("[dim]Please use --use-framework flag to use the new Agentic Game Framework.[/]")
             asyncio.run(run_simulation_async(senators_int, debate_rounds_int, topics_int, year_int, provider, model))
         
     except Exception as e:
@@ -524,8 +545,8 @@ async def run_framework_simulation(senators: int = 10, debate_rounds: int = 3, t
     """
     Run a simulation using the new Agentic Game Framework.
     
-    This function uses the integration components to run a Senate simulation
-    with the new framework architecture.
+    This function directly uses the Senate simulation domain from the framework
+    architecture.
     
     Args:
         senators: Number of senators to simulate
@@ -535,11 +556,8 @@ async def run_framework_simulation(senators: int = 10, debate_rounds: int = 3, t
         provider: LLM provider to use (defaults to config)
         model: LLM model to use (defaults to config)
     """
-    # Import the framework integration demo
-    if is_running_directly:
-        from src.roman_senate.examples.framework_integration_demo.framework_integration_demo import FrameworkIntegrationDemo
-    else:
-        from .examples.framework_integration_demo.framework_integration_demo import FrameworkIntegrationDemo
+    # Import the framework simulation
+    from src.roman_senate_framework.domains.senate.simulation import run_simulation
     
     # Use a deterministic seed if in test/non-interactive mode for reproducibility
     if os.environ.get('ROMAN_SENATE_TEST_MODE') == 'true':
@@ -548,13 +566,69 @@ async def run_framework_simulation(senators: int = 10, debate_rounds: int = 3, t
         console.print("[dim]Using deterministic seed for testing...[/]")
         logger.debug("Using deterministic seed (42) for testing")
     
-    # Create and run the framework integration demo
-    console.print("[bold cyan]Initializing Framework Integration Demo...[/]")
-    demo = FrameworkIntegrationDemo(num_senators=senators, num_topics=topics)
+    # Select LLM provider
+    llm_provider = None
+    if provider:
+        if provider.lower() == "mock":
+            from src.roman_senate.utils.llm.mock_provider import MockProvider
+            llm_provider = MockProvider()
+        elif provider.lower() == "openai":
+            from src.roman_senate.utils.llm.openai_provider import OpenAIProvider
+            llm_provider = OpenAIProvider(model=model or "gpt-3.5-turbo")
+        elif provider.lower() == "ollama":
+            from src.roman_senate.utils.llm.ollama_provider import OllamaProvider
+            llm_provider = OllamaProvider(model=model or "llama2")
+    
+    # Create default topics
+    debate_topics = [
+        "The expansion of Roman citizenship to Italian allies",
+        "Funding for new aqueducts in Rome",
+        "Military reforms proposed by the consul",
+        "Land redistribution to veterans",
+        "Grain subsidies for the urban poor"
+    ]
+    
+    # Use only the requested number of topics
+    selected_topics = debate_topics[:topics]
+    
+    # Configuration
+    config = {
+        "year": year,
+        "topics": selected_topics,
+        "factions": ["Optimates", "Populares", "Neutral"],
+        "debate": {
+            "max_rounds": debate_rounds,
+            "speech_time_limit": 120,
+            "interjection_limit": 2,
+            "reaction_limit": 5
+        }
+    }
     
     # Run the simulation
     console.print("[bold cyan]Running Senate simulation with Agentic Game Framework...[/]")
-    await demo.run_simulation()
+    results = await run_simulation(
+        num_senators=senators,
+        topics=selected_topics,
+        rounds_per_topic=debate_rounds,
+        llm_provider=llm_provider,
+        config=config
+    )
+    
+    # Display results summary
+    console.print("\n[bold green]Framework simulation completed![/]")
+    console.print(f"Simulated {len(selected_topics)} topics with {senators} senators in the year {abs(year)} BCE.")
+    
+    # Simple summary of results
+    for result in results:
+        topic = result.get("topic", "Unknown topic")
+        speeches = result.get("speeches", 0)
+        reactions = result.get("reactions", 0)
+        
+        console.print(f"\n[bold yellow]Topic:[/] {topic}")
+        console.print(f"Speeches: {speeches}")
+        console.print(f"Reactions: {reactions}")
+    
+    return results
     
     console.print("\n[bold green]Framework simulation completed successfully![/]")
     console.print(f"Simulated {topics} topics with {senators} senators in the year {abs(year)} BCE using the new framework.")

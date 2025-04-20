@@ -4,14 +4,18 @@ Relationship Manager for Agentic Game Framework.
 This module provides the manager class for handling collections of relationships,
 including adding, removing, retrieving, and updating relationships.
 """
-
 import json
+import logging
 import os
-from typing import Dict, List, Optional, Set, Tuple, Type
+import time
+from typing import Dict, List, Optional, Set, Tuple, Type, Any, Callable
 
 from ..events.base import BaseEvent
 from ..events.event_bus import EventBus
 from .base_relationship import BaseRelationship, SimpleRelationship
+
+# Set up module logger
+logger = logging.getLogger(__name__)
 
 
 class RelationshipManager:
@@ -31,7 +35,9 @@ class RelationshipManager:
         self,
         event_bus: Optional[EventBus] = None,
         default_relationship_class: Type[BaseRelationship] = SimpleRelationship,
-        storage_dir: Optional[str] = None
+        storage_dir: Optional[str] = None,
+        enable_caching: bool = True,
+        event_filtering: bool = True
     ):
         """
         Initialize a new relationship manager.
@@ -40,6 +46,8 @@ class RelationshipManager:
             event_bus: Optional event bus to connect relationships to
             default_relationship_class: Default class to use for new relationships
             storage_dir: Optional directory for relationship persistence
+            enable_caching: Whether to enable results caching for lookups
+            event_filtering: Whether to filter events by relevance
         """
         # Map of relationship_id -> relationship instance
         self._relationships: Dict[str, BaseRelationship] = {}
@@ -53,6 +61,24 @@ class RelationshipManager:
         # Map of relationship_type -> set of relationship_ids
         self._type_index: Dict[str, Set[str]] = {}
         
+        # Cache for frequent lookups
+        self._lookup_cache: Dict[str, Tuple[float, Any]] = {}
+        self._cache_ttl = 10.0  # seconds
+        self._enable_caching = enable_caching
+        self._event_filtering = event_filtering
+        
+        # Performance metrics
+        self._metrics = {
+            "relationships_added": 0,
+            "relationships_removed": 0,
+            "relationships_updated": 0,
+            "cache_hits": 0,
+            "lookup_operations": 0,
+            "events_processed": 0,
+            "events_filtered_out": 0,
+            "last_operation_time": 0.0
+        }
+        
         # Event bus for relationship-event interactions
         self._event_bus = event_bus
         
@@ -62,6 +88,9 @@ class RelationshipManager:
         # Storage directory for persistence
         self._storage_dir = storage_dir
         
+        # Event type filters for specific relationship types
+        self._event_filters: Dict[str, Callable[[BaseEvent], bool]] = {}
+        
         # Create storage directory if specified and doesn't exist
         if storage_dir and not os.path.exists(storage_dir):
             os.makedirs(storage_dir)
@@ -69,6 +98,9 @@ class RelationshipManager:
         # Register with event bus if provided
         if event_bus:
             self._register_with_event_bus()
+            
+        logger.info(f"Initialized RelationshipManager with caching={'enabled' if enable_caching else 'disabled'} " +
+                  f"and event_filtering={'enabled' if event_filtering else 'disabled'}")
     
     def add_relationship(self, relationship: BaseRelationship) -> None:
         """
@@ -80,6 +112,8 @@ class RelationshipManager:
         Raises:
             ValueError: If a relationship between these agents already exists
         """
+        start_time = time.time()
+        
         # Check if relationship between these agents already exists
         agent_pair = self._get_agent_pair_key(relationship.agent_a_id, relationship.agent_b_id)
         if agent_pair in self._agent_pair_index:
@@ -106,6 +140,33 @@ class RelationshipManager:
         if rel_type not in self._type_index:
             self._type_index[rel_type] = set()
         self._type_index[rel_type].add(relationship.id)
+        
+        # Update metrics
+        self._metrics["relationships_added"] += 1
+        
+        # Clear relevant cache entries if caching is enabled
+        if self._enable_caching:
+            agent_a_id, agent_b_id = relationship.agent_a_id, relationship.agent_b_id
+            cache_keys_to_clear = []
+            
+            # Remove all cache entries involving these agents
+            for key in self._lookup_cache.keys():
+                if (f"agent:{agent_a_id}" in key or
+                    f"agent:{agent_b_id}" in key or
+                    f"type:{rel_type}" in key):
+                    cache_keys_to_clear.append(key)
+                    
+            for key in cache_keys_to_clear:
+                self._lookup_cache.pop(key, None)
+                
+            if cache_keys_to_clear:
+                logger.debug(f"Cleared {len(cache_keys_to_clear)} cache entries after adding relationship")
+        
+        # Log operation time
+        operation_time = time.time() - start_time
+        self._metrics["last_operation_time"] = operation_time
+        if operation_time > 0.01:  # Log slow operations
+            logger.debug(f"Slow relationship add: {relationship.id} took {operation_time:.4f}s")
     
     def remove_relationship(self, relationship_id: str) -> Optional[BaseRelationship]:
         """
@@ -166,13 +227,46 @@ class RelationshipManager:
         Returns:
             Optional[BaseRelationship]: The relationship, or None if not found
         """
+        start_time = time.time()
+        self._metrics["lookup_operations"] += 1
+        
+        # Check cache if enabled
+        if self._enable_caching:
+            cache_key = f"rel_between:{agent_a_id}:{agent_b_id}"
+            if cache_key in self._lookup_cache:
+                cache_time, cached_result = self._lookup_cache[cache_key]
+                if time.time() - cache_time < self._cache_ttl:
+                    self._metrics["cache_hits"] += 1
+                    return cached_result
+                    
+        # Lookup relationship
         agent_pair = self._get_agent_pair_key(agent_a_id, agent_b_id)
         relationship_id = self._agent_pair_index.get(agent_pair)
         
+        result = None
         if relationship_id:
-            return self._relationships.get(relationship_id)
+            result = self._relationships.get(relationship_id)
+        
+        # Store in cache if enabled
+        if self._enable_caching:
+            cache_key = f"rel_between:{agent_a_id}:{agent_b_id}"
+            self._lookup_cache[cache_key] = (time.time(), result)
             
-        return None
+            # Limit cache size
+            if len(self._lookup_cache) > 1000:  # Arbitrary but reasonable limit
+                # Remove oldest 20% of entries
+                oldest_keys = sorted(
+                    self._lookup_cache.keys(),
+                    key=lambda k: self._lookup_cache[k][0]
+                )[:int(len(self._lookup_cache) * 0.2)]
+                for key in oldest_keys:
+                    del self._lookup_cache[key]
+        
+        # Update metrics
+        operation_time = time.time() - start_time
+        self._metrics["last_operation_time"] = operation_time
+            
+        return result
     
     def get_agent_relationships(self, agent_id: str) -> List[BaseRelationship]:
         """
@@ -276,19 +370,80 @@ class RelationshipManager:
         Returns:
             int: Number of relationships updated
         """
+        start_time = time.time()
+        self._metrics["events_processed"] += 1
+        
+        # Skip processing if no agents are involved
+        if not event.source and not event.target and not event.data.get("participants"):
+            self._metrics["events_filtered_out"] += 1
+            return 0
+        
+        # Apply event filters if enabled
+        if self._event_filtering:
+            # Filter events by type for specific relationship types
+            event_type = event.event_type
+            # Skip events that we know don't affect relationships
+            if event_type.startswith("system.") or event_type.startswith("log."):
+                self._metrics["events_filtered_out"] += 1
+                return 0
+                
+            # Apply custom filters if any
+            for rel_type, filter_func in self._event_filters.items():
+                if not filter_func(event):
+                    # This event doesn't apply to this relationship type
+                    continue
+        
         updated_count = 0
         
         # Determine which agents are involved in the event
         involved_agents = self._get_involved_agents(event)
         
-        # Update relationships between involved agents
+        # Skip if less than 2 agents involved
+        if len(involved_agents) < 2:
+            self._metrics["events_filtered_out"] += 1
+            return 0
+            
+        # Track relationships to update
+        to_update = []
+        
+        # Find relationships between involved agents
         for i, agent_a_id in enumerate(involved_agents):
             for agent_b_id in involved_agents[i+1:]:
                 relationship = self.get_relationship_between(agent_a_id, agent_b_id)
+                if relationship:
+                    to_update.append(relationship)
+        
+        # Update identified relationships
+        for relationship in to_update:
+            if relationship.update(event):
+                updated_count += 1
+                self._metrics["relationships_updated"] += 1
                 
-                if relationship and relationship.update(event):
-                    updated_count += 1
+                # Clear relevant cache entries if caching is enabled
+                if self._enable_caching:
+                    cache_keys_to_clear = []
+                    agent_a_id, agent_b_id = relationship.agent_a_id, relationship.agent_b_id
+                    rel_type = relationship.relationship_type
                     
+                    # Remove all cache entries involving these agents
+                    for key in self._lookup_cache.keys():
+                        if (f"agent:{agent_a_id}" in key or
+                            f"agent:{agent_b_id}" in key or
+                            f"rel_between:{agent_a_id}" in key or
+                            f"rel_between:{agent_b_id}" in key or
+                            f"type:{rel_type}" in key):
+                            cache_keys_to_clear.append(key)
+                            
+                    for key in cache_keys_to_clear:
+                        self._lookup_cache.pop(key, None)
+        
+        # Log slow event processing
+        operation_time = time.time() - start_time
+        self._metrics["last_operation_time"] = operation_time
+        
+        if operation_time > 0.05:  # Log slow event processing
+            logger.debug(f"Slow relationship update: {event.event_type} affected {updated_count} relationships, took {operation_time:.4f}s")
+            
         return updated_count
     
     def _get_involved_agents(self, event: BaseEvent) -> List[str]:
