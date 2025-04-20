@@ -69,6 +69,12 @@ def main(
 
 def ensure_correct_path():
     """Ensure the script runs from the correct directory."""
+    # Ensure logger is initialized
+    global logger
+    if logger is None:
+        from src.roman_senate.utils.logging_utils import setup_logging
+        logger = setup_logging()
+        
     script_dir = os.path.dirname(os.path.abspath(__file__))
     
     if os.getcwd() != script_dir:
@@ -97,6 +103,12 @@ def simulate(
     This command will use either the legacy or framework architecture based on
     the --use-framework/--use-legacy global flag.
     """
+    # Ensure logger is initialized
+    global logger
+    if logger is None:
+        from src.roman_senate.utils.logging_utils import setup_logging
+        logger = setup_logging()
+        
     try:
         # Convert parameters to integers (typer does this automatically, but keeping for safety)
         senators_int = int(senators)
@@ -158,6 +170,12 @@ def play(
     This command will use either the legacy or framework architecture based on
     the --use-framework/--use-legacy global flag.
     """
+    # Ensure logger is initialized
+    global logger
+    if logger is None:
+        from src.roman_senate.utils.logging_utils import setup_logging
+        logger = setup_logging()
+        
     try:
         # Convert parameters to integers
         senators_int = int(senators)
@@ -215,6 +233,12 @@ def play_as_senator(
     This command will use either the legacy or framework architecture based on
     the --use-framework/--use-legacy global flag.
     """
+    # Ensure logger is initialized
+    global logger
+    if logger is None:
+        from src.roman_senate.utils.logging_utils import setup_logging
+        logger = setup_logging()
+        
     try:
         # Convert parameters to integers
         senators_int = int(senators)
@@ -259,6 +283,12 @@ def play_as_senator(
 @app.command(name="info")
 def info():
     """Display information about the game and available commands."""
+    # Ensure logger is initialized
+    global logger
+    if logger is None:
+        from src.roman_senate.utils.logging_utils import setup_logging
+        logger = setup_logging()
+        
     # Call the info command from the main CLI
     from src.roman_senate.cli import info as cli_info
     cli_info()

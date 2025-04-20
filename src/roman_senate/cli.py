@@ -20,8 +20,7 @@ from rich.console import Console
 from rich.table import Table
 from datetime import datetime
 
-# Import the logging utilities
-from src.roman_senate.utils.logging_utils import setup_logging, get_logger
+# Logging utils will be imported through init_imports()
 
 # Fix import issues when running the script directly
 # Set up path correctly first before any other imports
@@ -124,6 +123,10 @@ def main(
 
 def ensure_correct_path():
     """Ensure the script runs from the correct directory."""
+    global logger
+    if logger is None:
+        logger = setup_logging()
+        
     script_dir = os.path.dirname(os.path.abspath(__file__))
     base_dir = os.path.dirname(os.path.dirname(script_dir))  # Get project root
     
@@ -156,6 +159,11 @@ def play(
     
     Supports both legacy and Agentic Game Framework architectures via the global --use-framework flag.
     """
+    # Ensure logger is initialized
+    global logger
+    if logger is None:
+        logger = setup_logging(log_level=log_level, log_file=log_file, verbose=verbose)
+        
     try:
         # Convert parameters to integers (typer does this automatically, but keeping for safety)
         senators_int = int(senators)
@@ -361,6 +369,11 @@ def play_as_senator(
     
     Supports both legacy and Agentic Game Framework architectures via the global --use-framework flag.
     """
+    # Ensure logger is initialized
+    global logger
+    if logger is None:
+        logger = setup_logging(log_level=log_level, log_file=log_file, verbose=verbose)
+        
     try:
         # Convert parameters to integers (typer does this automatically, but keeping for safety)
         senators_int = int(senators)
@@ -484,6 +497,11 @@ def simulate(
     Uses agent-driven logic for intelligent decision-making combined with
     rich traditional formatting to display speeches, debates, and voting results.
     """
+    # Ensure logger is initialized
+    global logger
+    if logger is None:
+        logger = setup_logging(log_level=log_level, log_file=log_file, verbose=verbose)
+        
     try:
         # Set test mode environment variable if non_interactive
         if non_interactive:
@@ -689,6 +707,11 @@ def info(
     log_file: str = typer.Option(None, "--log-file", help="Custom log file path")
 ):
     """Display information about the game and its systems."""
+    # Ensure logger is initialized
+    global logger
+    if logger is None:
+        logger = setup_logging(log_level=log_level, log_file=log_file, verbose=verbose)
+        
     console.print(
         "\n[bold underline]ROMAN SENATE AI GAME[/]\n"
         "\n[bold]Game Description:[/]"
@@ -714,6 +737,11 @@ def save_command(
     filename: Optional[str] = typer.Argument(None, help="Optional custom filename for the save (without extension)")
 ):
     """Save the current game state to a file."""
+    # Ensure logger is initialized
+    global logger
+    if logger is None:
+        logger = setup_logging()
+        
     try:
         # Check if there's an active game state to save
         if is_running_directly:
@@ -745,6 +773,11 @@ def load_command(
     filename: str = typer.Argument(..., help="Name of the save file to load")
 ):
     """Load a game state from a save file."""
+    # Ensure logger is initialized
+    global logger
+    if logger is None:
+        logger = setup_logging()
+        
     try:
         # Load the game
         if load_game(filename):
@@ -768,6 +801,11 @@ def load_command(
 @app.command(name="list-saves")
 def list_saves_command():
     """List all available save files."""
+    # Ensure logger is initialized
+    global logger
+    if logger is None:
+        logger = setup_logging()
+        
     try:
         # Get all save files
         save_files = get_save_files()
