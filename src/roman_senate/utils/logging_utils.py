@@ -41,7 +41,13 @@ def setup_logging(
             'ERROR': logging.ERROR,
             'CRITICAL': logging.CRITICAL
         }
-        level = level_mapping.get(log_level.upper(), logging.INFO)
+        # Handle both string and OptionInfo object cases
+        if hasattr(log_level, 'upper'):
+            log_level_str = log_level.upper()
+        else:
+            # Convert to string if it's another type (like OptionInfo object)
+            log_level_str = str(log_level).upper()
+        level = level_mapping.get(log_level_str, logging.INFO)
     else:
         level = logging.INFO
     
@@ -54,6 +60,10 @@ def setup_logging(
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         log_file = logs_dir / f"run.{timestamp}.log"
     else:
+        # Convert to string if it's not a string (like OptionInfo object)
+        if not isinstance(log_file, (str, bytes, os.PathLike)):
+            log_file = str(log_file)
+            
         # If the log_file is just a filename (no path), put it in the logs directory
         if not os.path.dirname(log_file):
             log_file = logs_dir / log_file

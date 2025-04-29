@@ -162,7 +162,10 @@ def play(
     topics: int = typer.Option(3, help="Number of topics to debate"),
     year: int = typer.Option(-100, help="Year in Roman history (negative for BCE)"),
     provider: str = typer.Option(None, help="LLM provider to use (defaults to config)"),
-    model: str = typer.Option(None, help="LLM model to use (defaults to config)")
+    model: str = typer.Option(None, help="LLM model to use (defaults to config)"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Increase output verbosity"),
+    log_level: str = typer.Option(None, "--log-level", help="Set logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)"),
+    log_file: str = typer.Option(None, "--log-file", help="Custom log file path")
 ):
     """
     Start a new game session of the Roman Senate simulation.
@@ -193,6 +196,18 @@ def play(
         
         # Use the unified CLI to run the game with the current framework setting
         from src.roman_senate.cli import play as cli_play
+        
+        # Extract string value from log_level if it's an OptionInfo object
+        log_level_value = log_level
+        if log_level and hasattr(log_level, 'default'):
+            log_level_value = log_level.default
+            
+        # Same for log_file
+        log_file_value = log_file
+        if log_file and hasattr(log_file, 'default'):
+            log_file_value = log_file.default
+            
+        # Call cli_play with the extracted string values
         cli_play(
             senators=senators_int,
             debate_rounds=debate_rounds_int,
@@ -200,7 +215,9 @@ def play(
             year=year_int,
             provider=provider,
             model=model,
-            verbose=False
+            verbose=verbose,
+            log_level=log_level_value,
+            log_file=log_file_value
         )
     except Exception as e:
         error_msg = f"Fatal game error: {str(e)}"

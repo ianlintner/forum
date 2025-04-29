@@ -7,6 +7,7 @@ This module implements the simulation runner for the Roman Senate domain.
 import asyncio
 import logging
 import random
+import uuid
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from src.agentic_game_framework.events.event_bus import EventBus
@@ -47,6 +48,8 @@ class SenateSimulation:
         self.num_senators = num_senators
         self.llm_provider = llm_provider
         self.config = config or {}
+        # Create a unique identifier for this simulation instance
+        self.id = f"senate_simulation_{uuid.uuid4().hex[:8]}"
         # Create and initialize the Senate domain
         self.senate_domain = register_senate_domain()
         
@@ -153,7 +156,7 @@ class SenateSimulation:
         logger.info(f"Starting debate on topic: {topic}")
         
         # Create and publish debate start event
-        debate_start = create_debate_start_event(topic)
+        debate_start = create_debate_start_event(topic, source_id=self.id)
         self.event_bus.publish(debate_start)
         
         # Wait for agents to process the event
@@ -168,7 +171,8 @@ class SenateSimulation:
                 # Announce speaker change
                 speaker_change = create_speaker_change_event(
                     topic=topic,
-                    speaker_id=senator.id
+                    speaker_id=senator.id,
+                    source_id=self.id
                 )
                 self.event_bus.publish(speaker_change)
                 
@@ -187,7 +191,7 @@ class SenateSimulation:
             await asyncio.sleep(1)
         
         # Create and publish debate end event
-        debate_end = create_debate_end_event(topic)
+        debate_end = create_debate_end_event(topic, source_id=self.id)
         self.event_bus.publish(debate_end)
         
         # Wait for agents to process the event

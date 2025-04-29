@@ -1,0 +1,105 @@
+2025-04-28 20:05:19 | INFO     | root:99 | Logging initialized - Level: INFO, File: /Users/E74823/projects/senatev2/logs/<typer.models.OptionInfo object at 0x1139a5220>
+2025-04-28 20:05:19 | INFO     | root:510 | Running in non-interactive test mode
+2025-04-28 20:05:19 | INFO     | root:525 | Starting simulation: senators=10, debate_rounds=3, topics=3, year=-100, provider=mock, model=None, use_framework=True
+2025-04-28 20:05:19 | INFO     | root:530 | Using new Agentic Game Framework for simulation
+2025-04-28 20:05:19 | INFO     | src.roman_senate.utils.llm.mock_provider:28 | Initializing MockProvider for test mode
+2025-04-28 20:05:19 | INFO     | src.roman_senate.utils.llm.mock_provider:111 | MockProvider initialized with seed 42
+2025-04-28 20:05:19 | INFO     | src.roman_senate_framework.domains.senate.domain:751 | Roman Senate domain initialized with all components
+2025-04-28 20:05:19 | INFO     | src.agentic_game_framework.events.event_bus:147 | Initialized EventBus with async=disabled, batch_size=10
+2025-04-28 20:05:19 | INFO     | src.roman_senate_framework.domains.senate.simulation:254 | Starting Roman Senate session
+2025-04-28 20:05:19 | INFO     | src.roman_senate_framework.domains.senate.simulation:143 | Created Neutral senator: Marcus Cornelius Scipio (Rank 1)
+2025-04-28 20:05:19 | INFO     | src.roman_senate_framework.domains.senate.simulation:143 | Created Neutral senator: Gaius Julius Caesar (Rank 1)
+2025-04-28 20:05:19 | INFO     | src.roman_senate_framework.domains.senate.simulation:143 | Created Populares senator: Lucius Claudius Cicero (Rank 1)
+2025-04-28 20:05:19 | INFO     | src.roman_senate_framework.domains.senate.simulation:143 | Created Optimates senator: Publius Valerius Cato (Rank 5)
+2025-04-28 20:05:19 | INFO     | src.roman_senate_framework.domains.senate.simulation:143 | Created Optimates senator: Quintus Fabius Brutus (Rank 4)
+2025-04-28 20:05:19 | INFO     | src.roman_senate_framework.domains.senate.simulation:143 | Created Optimates senator: Titus Aemilius Sulla (Rank 4)
+2025-04-28 20:05:19 | INFO     | src.roman_senate_framework.domains.senate.simulation:143 | Created Populares senator: Gnaeus Calpurnius Crassus (Rank 1)
+2025-04-28 20:05:19 | INFO     | src.roman_senate_framework.domains.senate.simulation:143 | Created Neutral senator: Sextus Licinius Rufus (Rank 3)
+2025-04-28 20:05:19 | INFO     | src.roman_senate_framework.domains.senate.simulation:143 | Created Populares senator: Aulus Junius Longus (Rank 1)
+2025-04-28 20:05:19 | INFO     | src.roman_senate_framework.domains.senate.simulation:143 | Created Populares senator: Decimus Domitius Magnus (Rank 5)
+2025-04-28 20:05:19 | INFO     | src.roman_senate_framework.domains.senate.simulation:156 | Starting debate on topic: The expansion of Roman citizenship to Italian allies
+2025-04-28 20:05:19 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:05:20 | INFO     | src.roman_senate_framework.domains.senate.simulation:167 | Debate round 1
+2025-04-28 20:05:20 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:05:23 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:05:25 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:05:28 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:05:30 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:05:33 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:05:35 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:05:38 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:05:40 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:05:43 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:05:46 | INFO     | src.roman_senate_framework.domains.senate.simulation:167 | Debate round 2
+2025-04-28 20:05:46 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:05:49 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:05:51 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:05:54 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:05:56 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:05:59 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:06:01 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:06:04 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:06:06 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:06:09 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:06:12 | INFO     | src.roman_senate_framework.domains.senate.simulation:167 | Debate round 3
+2025-04-28 20:06:12 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:06:15 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:06:17 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:06:20 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:06:22 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:06:25 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:06:27 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:06:30 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:06:32 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:06:35 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:06:38 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:06:39 | INFO     | src.roman_senate_framework.domains.senate.simulation:200 | Debate on The expansion of Roman citizenship to Italian allies concluded
+2025-04-28 20:06:39 | INFO     | src.roman_senate_framework.domains.senate.simulation:156 | Starting debate on topic: Funding for new aqueducts in Rome
+2025-04-28 20:06:39 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:06:40 | INFO     | src.roman_senate_framework.domains.senate.simulation:167 | Debate round 1
+2025-04-28 20:06:40 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:06:43 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:06:45 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:06:48 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:06:50 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:06:53 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:06:55 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:06:58 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:07:00 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:07:03 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:07:06 | INFO     | src.roman_senate_framework.domains.senate.simulation:167 | Debate round 2
+2025-04-28 20:07:06 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:07:09 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:07:11 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:07:14 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:07:16 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:07:19 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:07:21 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:07:24 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:07:26 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:07:29 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:07:32 | INFO     | src.roman_senate_framework.domains.senate.simulation:167 | Debate round 3
+2025-04-28 20:07:32 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:07:35 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:07:37 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:07:40 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:07:42 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:07:45 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:07:47 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:07:50 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:07:52 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:07:55 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:07:58 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:07:59 | INFO     | src.roman_senate_framework.domains.senate.simulation:200 | Debate on Funding for new aqueducts in Rome concluded
+2025-04-28 20:07:59 | INFO     | src.roman_senate_framework.domains.senate.simulation:156 | Starting debate on topic: Military reforms proposed by the consul
+2025-04-28 20:07:59 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:08:00 | INFO     | src.roman_senate_framework.domains.senate.simulation:167 | Debate round 1
+2025-04-28 20:08:00 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:08:03 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:08:05 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:08:08 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:08:10 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:08:13 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:08:15 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:08:18 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd
+2025-04-28 20:08:20 | INFO     | src.roman_senate_framework.domains.senate.simulation:103 | Event: senate.debate from senate_simulation_626b30fd

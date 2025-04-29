@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roman Senate Simulation Viewer</title>
+    <style>
+        :root {
+            --roman-red: #8B0000;
+            --roman-gold: #DAA520;
+            --roman-cream: #F5F5DC;
+            --roman-marble: #F5F5F5;
+            --roman-shadow: rgba(0, 0, 0, 0.1);
+            --roman-text: #333333;
+            --roman-border: #CCCCCC;
+        }
+        
+        body {
+            font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--roman-marble);
+            color: var(--roman-text);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px var(--roman-shadow);
+            border: 1px solid var(--roman-border);
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--roman-gold);
+        }
+        
+        h1 {
+            color: var(--roman-red);
+            font-size: 2.2em;
+            margin: 0;
+            padding: 10px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .subtitle {
+            font-style: italic;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: var(--roman-cream);
+            border-radius: 5px;
+            border: 1px solid var(--roman-border);
+        }
+        
+        .status {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            font-weight: bold;
+            text-align: center;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        
+        .status.connected {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .events-container {
+            border: 1px solid var(--roman-border);
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        .events-header {
+            background-color: var(--roman-red);
+            color: white;
+            padding: 10px 15px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .events {
+            height: 600px;
+            overflow-y: auto;
+            padding: 0;
+            background-color: white;
+            scroll-behavior: smooth;
+        }
+        
+        .event {
+            margin: 10px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: white;
+            border-left: 4px solid var(--roman-red);
+            box-shadow: 0 1px 3px var(--roman-shadow);
+            transition: transform 0.2s;
+        }
+        
+        .event:hover {
+            transform: translateX(5px);
+        }
+        
+        .event-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        
+        .event-type {
+            color: var(--roman-red);
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        
+        .event-timestamp {
+            color: #6c757d;
+            font-size: 0.9em;
+            font-style: italic;
+        }
+        
+        .event-content {
+            margin-top: 10px;
+        }
+        
+        .event-source, .event-target {
+            font-weight: bold;
+        }
+        
+        .event-data {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border: 1px solid #eee;
+        }
+        
+        .event-data-item {
+            margin-bottom: 5px;
+        }
+        
+        .event-data-key {
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        .event-data-value {
+            color: #212529;
+        }
+        
+        /* Event type-specific styling */
+        .event.speech {
+            border-left-color: #007bff;
+        }
+        
+        .event.vote {
+            border-left-color: #28a745;
+        }
+        
+        .event.debate {
+            border-left-color: #6f42c1;
+        }
+        
+        .event.relationship {
+            border-left-color: #e83e8c;
+        }
+        
+        .event.system {
+            border-left-color: #6c757d;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: var(--roman-red);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-family: inherit;
+            font-size: 1em;
+        }
+        
+        button:hover {
+            background-color: #6d0000;
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .clear-btn {
+            background-color: #6c757d;
+        }
+        
+        .clear-btn:hover {
+            background-color: #5a6268;
+        }
+        
+        .filter-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .filter-btn {
+            background-color: #f8f9fa;
+            color: #212529;
+            border: 1px solid #dee2e6;
+            padding: 5px 10px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .filter-btn:hover {
+            background-color: #e9ecef;
+        }
+        
+        .filter-btn.active {
+            background-color: var(--roman-red);
+            color: white;
+            border-color: var(--roman-red);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: #6c757d;
+            font-style: italic;
+        }
+        
+        .new-event {
+            animation: highlight 2s ease-out;
+        }
+        
+        @keyframes highlight {
+            0% { background-color: rgba(255, 255, 0, 0.3); }
+            100% { background-color: white; }
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .events {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Roman Senate Simulation</h1>
+            <div class="subtitle">Witness the debates and political maneuvering of Ancient Rome</div>
+        </header>
+        
+        <div class="controls">
+            <div>
+                <button id="connect-btn">Connect to Senate</button>
+                <button id="disconnect-btn" disabled>Disconnect</button>
+            </div>
+            <div>
+                <button id="clear-btn" class="clear-btn">Clear Events</button>
+            </div>
+        </div>
+        
+        <div id="status" class="status disconnected">
+            Disconnected from Senate proceedings
+        </div>
+        
+        <div class="filter-controls">
+            <span class="filter-btn active" data-type="all">All Events</span>
+            <span class="filter-btn" data-type="speech">Speeches</span>
+            <span class="filter-btn" data-type="vote">Votes</span>
+            <span class="filter-btn" data-type="debate">Debates</span>
+            <span class="filter-btn" data-type="relationship">Relationships</span>
+            <span class="filter-btn" data-type="system">System</span>
+        </div>
+        
+        <div class="events-container">
+            <div class="events-header">
+                <span>Senate Proceedings</span>
+                <span id="event-count">0 events</span>
+            </div>
+            <div id="events" class="events">
+                <div class="empty-state">
+                    Connect to the Senate to view proceedings
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const connectBtn = document.getElementById('connect-btn');
+            const disconnectBtn = document.getElementById('disconnect-btn');
+            const clearBtn = document.getElementById('clear-btn');
+            const statusDiv = document.getElementById('status');
+            const eventsDiv = document.getElementById('events');
+            const eventCountSpan = document.getElementById('event-count');
+            const filterBtns = document.querySelectorAll('.filter-btn');
+            
+            let socket = null;
+            let eventCount = 0;
+            let activeFilter = 'all';
+            
+            // Event type mapping for CSS classes
+            const eventTypeClasses = {
+                'SpeechEvent': 'speech',
+                'VoteEvent': 'vote',
+                'DebateEvent': 'debate',
+                'RelationshipEvent': 'relationship',
+                'connection_established': 'system',
+                'echo': 'system'
+            };
+            
+            // Connect to WebSocket server
+            connectBtn.addEventListener('click', function() {
+                // Get the current host and port
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const host = window.location.hostname || 'localhost';
+                const port = window.location.port || '8000';
+                const wsUrl = `${protocol}//${host}:${port}/ws`;
+                
+                try {
+                    socket = new WebSocket(wsUrl);
+                    
+                    socket.onopen = function(e) {
+                        statusDiv.textContent = 'Connected to Senate proceedings';
+                        statusDiv.className = 'status connected';
+                        connectBtn.disabled = true;
+                        disconnectBtn.disabled = false;
+                        
+                        // Clear empty state if it exists
+                        if (eventsDiv.querySelector('.empty-state')) {
+                            eventsDiv.innerHTML = '';
+                        }
+                        
+                        addEvent({
+                            type: 'connection_established',
+                            event_type: 'System',
+                            timestamp: new Date().toISOString(),
+                            data: { message: 'Connected to Roman Senate simulation' }
+                        });
+                    };
+                    
+                    socket.onmessage = function(event) {
+                        try {
+                            const data = JSON.parse(event.data);
+                            handleEvent(data);
+                        } catch (error) {
+                            console.error('Error parsing event data:', error);
+                            addEvent({
+                                type: 'error',
+                                event_type: 'Error',
+                                timestamp: new Date().toISOString(),
+                                data: { message: `Error parsing data: ${error.message}`, raw: event.data }
+                            });
+                        }
+                    };
+                    
+                    socket.onclose = function(event) {
+                        if (event.wasClean) {
+                            statusDiv.textContent = `Disconnected: Code=${event.code}, Reason=${event.reason}`;
+                        } else {
+                            statusDiv.textContent = 'Connection to Senate lost';
+                        }
+                        statusDiv.className = 'status disconnected';
+                        connectBtn.disabled = false;
+                        disconnectBtn.disabled = true;
+                        socket = null;
+                        
+                        addEvent({
+                            type: 'system',
+                            event_type: 'System',
+                            timestamp: new Date().toISOString(),
+                            data: { message: 'Disconnected from Roman Senate simulation' }
+                        });
+                    };
+                    
+                    socket.onerror = function(error) {
+                        statusDiv.textContent = 'WebSocket Error';
+                        statusDiv.className = 'status disconnected';
+                        console.error('WebSocket Error:', error);
+                        
+                        addEvent({
+                            type: 'error',
+                            event_type: 'Error',
+                            timestamp: new Date().toISOString(),
+                            data: { message: 'Connection error occurred' }
+                        });
+                    };
+                } catch (error) {
+                    statusDiv.textContent = `Failed to connect: ${error.message}`;
+                    statusDiv.className = 'status disconnected';
+                    console.error('Connection Error:', error);
+                }
+            });
+            
+            // Disconnect from WebSocket server
+            disconnectBtn.addEventListener('click', function() {
+                if (socket) {
+                    socket.close();
+                    statusDiv.textContent = 'Disconnected from Senate proceedings';
+                    statusDiv.className = 'status disconnected';
+                    connectBtn.disabled = false;
+                    disconnectBtn.disabled = true;
+                }
+            });
+            
+            // Clear events
+            clearBtn.addEventListener('click', function() {
+                eventsDiv.innerHTML = '';
+                eventCount = 0;
+                updateEventCount();
+                
+                // Add empty state if no events
+                if (eventsDiv.children.length === 0) {
+                    const emptyState = document.createElement('div');
+                    emptyState.className = 'empty-state';
+                    emptyState.textContent = socket ? 'Waiting for Senate events...' : 'Connect to the Senate to view proceedings';
+                    eventsDiv.appendChild(emptyState);
+                }
+            });
+            
+            // Event filtering
+            filterBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // Update active filter
+                    activeFilter = this.dataset.type;
+                    
+                    // Update active button
+                    filterBtns.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Apply filter
+                    applyFilter();
+                });
+            });
+            
+            function applyFilter() {
+                const events = eventsDiv.querySelectorAll('.event');
+                events.forEach(event => {
+                    if (activeFilter === 'all' || event.classList.contains(activeFilter)) {
+                        event.style.display = '';
+                    } else {
+                        event.style.display = 'none';
+                    }
+                });
+            }
+            
+            // Handle incoming event
+            function handleEvent(data) {
+                // For connection and echo events
+                if (data.type === 'connection_established' || data.type === 'echo') {
+                    addEvent(data);
+                    return;
+                }
+                
+                // For simulation events
+                addEvent(data);
+            }
+            
+            // Add event to the events div
+            function addEvent(data) {
+                // Remove empty state if it exists
+                const emptyState = eventsDiv.querySelector('.empty-state');
+                if (emptyState) {
+                    eventsDiv.removeChild(emptyState);
+                }
+                
+                // Create event element
+                const eventDiv = document.createElement('div');
+                eventDiv.className = 'event new-event';
+                
+                // Add event type class for styling and filtering
+                let eventTypeClass = 'system'; // Default
+                
+                if (data.type) {
+                    // For connection and echo events
+                    eventTypeClass = eventTypeClasses[data.type] || 'system';
+                } else if (data.event_type) {
+                    // For simulation events
+                    const eventType = data.event_type.toLowerCase();
+                    if (eventType.includes('speech')) {
+                        eventTypeClass = 'speech';
+                    } else if (eventType.includes('vote')) {
+                        eventTypeClass = 'vote';
+                    } else if (eventType.includes('debate')) {
+                        eventTypeClass = 'debate';
+                    } else if (eventType.includes('relation')) {
+                        eventTypeClass = 'relationship';
+                    }
+                }
+                
+                eventDiv.classList.add(eventTypeClass);
+                
+                // Create header
+                const headerDiv = document.createElement('div');
+                headerDiv.className = 'event-header';
+                
+                // Event type
+                const typeSpan = document.createElement('span');
+                typeSpan.className = 'event-type';
+                typeSpan.textContent = data.event_type || data.type || 'Unknown';
+                
+                // Timestamp
+                const timestampSpan = document.createElement('span');
+                timestampSpan.className = 'event-timestamp';
+                const timestamp = data.timestamp 
+                    ? new Date(data.timestamp).toLocaleString() 
+                    : new Date().toLocaleString();
+                timestampSpan.textContent = timestamp;
+                
+                headerDiv.appendChild(typeSpan);
+                headerDiv.appendChild(timestampSpan);
+                
+                // Create content
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'event-content';
+                
+                // Format content based on event type
+                let contentHtml = '';
+                
+                // Add source and target if available
+                if (data.source) {
+                    contentHtml += `<div><span class="event-source">${data.source}</span>`;
+                    if (data.target && data.target !== 'N/A') {
+                        contentHtml += ` → <span class="event-target">${data.target}</span>`;
+                    }
+                    contentHtml += `</div>`;
+                }
+                
+                // Add event data
+                if (data.data) {
+                    contentHtml += `<div class="event-data">`;
+                    
+                    // Special handling for speech content
+                    if (data.event_type && data.event_type.includes('Speech') && data.data.content) {
+                        contentHtml += `<blockquote style="font-style: italic; margin: 10px 0; padding: 10px; border-left: 3px solid #ccc;">${data.data.content}</blockquote>`;
+                    }
+                    
+                    // Add all data fields
+                    for (const [key, value] of Object.entries(data.data)) {
+                        // Skip content if already displayed as blockquote
+                        if (key === 'content' && data.event_type && data.event_type.includes('Speech')) {
+                            continue;
+                        }
+                        
+                        contentHtml += `<div class="event-data-item">`;
+                        contentHtml += `<span class="event-data-key">${key}:</span> `;
+                        
+                        if (typeof value === 'object') {
+                            contentHtml += `<span class="event-data-value">${JSON.stringify(value)}</span>`;
+                        } else {
+                            contentHtml += `<span class="event-data-value">${value}</span>`;
+                        }
+                        
+                        contentHtml += `</div>`;
+                    }
+                    
+                    contentHtml += `</div>`;
+                } else if (data.message) {
+                    // For simple message events
+                    contentHtml = `<div>${data.message}</div>`;
+                } else {
+                    // Fallback for other event types
+                    contentHtml = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+                
+                contentDiv.innerHTML = contentHtml;
+                
+                // Assemble event
+                eventDiv.appendChild(headerDiv);
+                eventDiv.appendChild(contentDiv);
+                
+                // Add to events container
+                eventsDiv.appendChild(eventDiv);
+                
+                // Apply current filter
+                if (activeFilter !== 'all' && !eventDiv.classList.contains(activeFilter)) {
+                    eventDiv.style.display = 'none';
+                }
+                
+                // Scroll to bottom
+                eventsDiv.scrollTop = eventsDiv.scrollHeight;
+                
+                // Update event count
+                eventCount++;
+                updateEventCount();
+                
+                // Remove highlight after animation
+                setTimeout(() => {
+                    eventDiv.classList.remove('new-event');
+                }, 2000);
+            }
+            
+            function updateEventCount() {
+                eventCountSpan.textContent = `${eventCount} event${eventCount !== 1 ? 's' : ''}`;
+            }
+        });
+    </script>
+</body>
+</html>
