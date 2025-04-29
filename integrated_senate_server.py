@@ -13,9 +13,11 @@ import logging
 import sys
 import time
 import random
+import os
 from typing import Optional, Dict, Any, List, Set, Tuple
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 # Configure logging
@@ -38,6 +40,7 @@ from src.roman_senate.web.server import (
 # Import the simulation components
 from src.roman_senate.utils.llm.base import LLMProvider
 from src.roman_senate.utils.llm.factory import get_llm_provider
+from src.roman_senate.utils.portrait_generator import PortraitGenerator
 from src.roman_senate_framework.domains.senate.simulation import SenateSimulation
 from src.roman_senate_framework.domains.senate.agents.speech_enabled_senator import SpeechEnabledSenator
 from src.agentic_game_framework.events.event_bus import EventBus
@@ -46,6 +49,8 @@ from src.roman_senate_framework.domains.senate.events.senate_events import (
     SpeechEvent
 )
 from src.roman_senate.web.integration import setup_event_bridge
+from src.roman_senate.web.portrait_server import setup_portrait_endpoints
+from src.roman_senate.web.portrait_testing import setup_portrait_testing_endpoints
 
 # Import the forced speech simulation
 class ForcedSpeechSimulation(SenateSimulation):
@@ -56,6 +61,7 @@ class ForcedSpeechSimulation(SenateSimulation):
         num_senators: int = 10,
         llm_provider: Optional[LLMProvider] = None,
         event_bus: Optional[EventBus] = None,
+        portrait_generator: Optional[PortraitGenerator] = None,
         config: Optional[Dict[str, Any]] = None
     ):
         """
@@ -73,6 +79,9 @@ class ForcedSpeechSimulation(SenateSimulation):
             llm_provider=llm_provider,
             config=config
         )
+        
+        # Set up portrait generator
+        self.portrait_generator = portrait_generator
         
         # Replace the parent's event bus with our custom one if provided
         if event_bus is not None:
@@ -109,6 +118,20 @@ class ForcedSpeechSimulation(SenateSimulation):
             faction = factions[i % len(factions)]
             rank = (i % 5) + 1  # Rank 1-5
             
+            # Generate portrait if we have a portrait generator
+            portrait_url = None
+            if self.portrait_generator:
+                try:
+                    # Generate portrait if it doesn't exist yet
+                    if not self.portrait_generator.portrait_exists(name, faction):
+                        self.portrait_generator.generate_portrait(name, faction)
+                    
+                    # Get the URL for the portrait
+                    portrait_url = self.portrait_generator.get_portrait_url(name, faction)
+                    logger.info(f"Portrait URL for {name}: {portrait_url}")
+                except Exception as e:
+                    logger.error(f"Error generating portrait for {name}: {e}")
+            
             # Create speech-enabled senator agent
             senator = SpeechEnabledSenator(
                 name=name,
@@ -117,6 +140,10 @@ class ForcedSpeechSimulation(SenateSimulation):
                 llm_provider=self.llm_provider,
                 event_bus=self.event_bus
             )
+            
+            # Add portrait URL to senator state
+            if portrait_url:
+                senator.state["portrait_url"] = portrait_url
             # Add to list and register with agent manager
             self.senators.append(senator)
             self.agent_manager.add_agent(senator)
@@ -191,12 +218,27 @@ class ForcedSpeechSimulation(SenateSimulation):
                     logger.info(f"Generated LLM speech for {senator.name}")
                     
                     # Create and publish the speech event
+                    # Include portrait URL in speech event if available
+                    portrait_url = senator.state.get("portrait_url")
+                    
+                    # Create additional data for the speech event
+                    speech_data = {
+                        "senator_name": senator.name,
+                        "faction": senator.faction,
+                        "rank": senator.rank
+                    }
+                    
+                    # Add portrait URL if available
+                    if portrait_url:
+                        speech_data["portrait_url"] = portrait_url
+                    
                     speech_event = SpeechEvent(
                         speaker_id=senator.id,
                         content=content,
                         topic=topic,
                         stance=stance,
-                        source=senator.id
+                        source=senator.id,
+                        data=speech_data
                     )
                     
                     self.event_bus.publish(speech_event)
@@ -264,7 +306,8 @@ class IntegratedSenateServer:
         debate_rounds: int = 2,
         auto_start_delay: float = 3.0,
         provider_type: str = "openai",
-        model_name: str = "gpt-3.5-turbo"
+        model_name: str = "gpt-3.5-turbo",
+        portraits_dir: str = "portraits"
     ):
         """
         Initialize the integrated server.
@@ -281,6 +324,7 @@ class IntegratedSenateServer:
         self.auto_start_delay = auto_start_delay
         self.provider_type = provider_type
         self.model_name = model_name
+        self.portraits_dir = portraits_dir
         
         # Flag to track if a simulation is already running
         self.simulation_running = False
@@ -292,6 +336,12 @@ class IntegratedSenateServer:
         self.llm_provider = get_llm_provider(
             provider_type=provider_type,
             model_name=model_name
+        )
+        
+        # Set up portrait generator
+        self.portrait_generator = PortraitGenerator(
+            portraits_dir=portraits_dir,
+            model="dall-e-3"  # Use DALL-E 3 for high-quality portraits
         )
         
         # Set up a custom websocket manager that triggers simulations
@@ -383,6 +433,7 @@ class IntegratedSenateServer:
             num_senators=self.num_senators,
             llm_provider=self.llm_provider,
             event_bus=self.event_bus,
+            portrait_generator=self.portrait_generator,
             config={"topics": topics[:2]}  # Choose 2 topics for faster demo
         )
         
@@ -418,6 +469,15 @@ async def run_integrated_server(host: str = "0.0.0.0", port: int = 8000):
     
     # Define a flag on the app to track simulation status
     setattr(app, "simulation_running", False)
+    
+    # Set up portrait endpoints with absolute path
+    portraits_dir = os.path.abspath(integrated_server.portraits_dir)
+    logger.info(f"Setting up portrait endpoints with directory: {portraits_dir}")
+    setup_portrait_endpoints(app, portraits_dir=portraits_dir)
+    setup_portrait_testing_endpoints(app, integrated_server.portrait_generator)
+    
+    # Also mount portraits directly as static files as a backup
+    app.mount("/portraits", StaticFiles(directory=portraits_dir), name="portraits_direct")
     
     # Start the FastAPI server
     config = uvicorn.Config(app, host=host, port=port)

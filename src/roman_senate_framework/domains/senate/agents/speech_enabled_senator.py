@@ -89,13 +89,25 @@ class SpeechEnabledSenator(SenatorAgent):
             logger.error(f"Error in speech generation process: {e}")
             content = f"As a {self.faction} senator with rank {self.rank}, I {stance} this proposal about {topic}."
         
+        # Create additional data for the speech event
+        speech_data = {
+            "senator_name": self.name,
+            "faction": self.faction,
+            "rank": self.rank
+        }
+        
+        # Add portrait URL if available in senator state
+        if "portrait_url" in self.state:
+            speech_data["portrait_url"] = self.state["portrait_url"]
+        
         # Create speech event
         speech_event = SpeechEvent(
             speaker_id=self.id,
             content=content,
             topic=topic,
             stance=stance,
-            source=self.id
+            source=self.id,
+            data=speech_data
         )
         
         # Update state

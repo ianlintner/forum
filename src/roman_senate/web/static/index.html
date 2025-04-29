@@ -41,6 +41,33 @@
             border-bottom: 2px solid var(--roman-gold);
         }
         
+        /* Portrait styling */
+        .senator-portrait {
+            width: 128px;
+            height: 128px;
+            border-radius: 50%;
+            border: 3px solid var(--roman-gold);
+            box-shadow: 0 3px 10px var(--roman-shadow);
+            margin-right: 15px;
+            object-fit: cover;
+            background-color: var(--roman-cream);
+        }
+        
+        .portrait-container {
+            float: left;
+            margin: 0 15px 10px 0;
+        }
+        
+        .event.speech {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .speech-content-container {
+            display: flex;
+            align-items: flex-start;
+        }
+        
         h1 {
             color: var(--roman-red);
             font-size: 2.2em;
@@ -570,13 +597,41 @@
                     
                     // Special handling for speech content
                     if (data.event_type && data.event_type.includes('Speech') && data.data.content) {
-                        contentHtml += `<blockquote style="font-style: italic; margin: 10px 0; padding: 10px; border-left: 3px solid #ccc;">${data.data.content}</blockquote>`;
+                        // Check if we have portrait data
+                        const hasPortrait = data.data.portrait_url;
+                        const senatorName = data.data.senator_name || data.source;
+                        const senatorFaction = data.data.faction || '';
+                        
+                        // Create speech content container with portrait if available
+                        contentHtml += `<div class="speech-content-container">`;
+                        
+                        // Add portrait if available
+                        if (hasPortrait) {
+                            contentHtml += `
+                                <div class="portrait-container">
+                                    <img
+                                        class="senator-portrait"
+                                        src="${data.data.portrait_url}"
+                                        alt="Portrait of ${senatorName}"
+                                        title="${senatorName} of the ${senatorFaction} faction"
+                                        onerror="this.onerror=null; this.src='data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'128\' height=\'128\' viewBox=\'0 0 128 128\'%3E%3Ccircle cx=\'64\' cy=\'64\' r=\'64\' fill=\'%23DAA520\' /%3E%3Ccircle cx=\'64\' cy=\'45\' r=\'20\' fill=\'%23FFFFFF\' /%3E%3Cpath d=\'M32 95 C32 75 96 75 96 95 L96 120 L32 120 Z\' fill=\'%23FFFFFF\' /%3E%3C/svg%3E'; console.log('Portrait failed to load:', this.alt);"
+                                    >
+                                    <div style="text-align: center; font-weight: bold; margin-top: 5px;">${senatorName}</div>
+                                    <div style="text-align: center; font-style: italic; font-size: 0.9em;">${senatorFaction}</div>
+                                </div>
+                            `;
+                        }
+                        
+                        // Add speech content
+                        contentHtml += `<blockquote style="font-style: italic; margin: 10px 0; padding: 10px; border-left: 3px solid #ccc; flex: 1;">${data.data.content}</blockquote>`;
+                        contentHtml += `</div>`;
                     }
                     
                     // Add all data fields
                     for (const [key, value] of Object.entries(data.data)) {
                         // Skip content if already displayed as blockquote
-                        if (key === 'content' && data.event_type && data.event_type.includes('Speech')) {
+                        if ((key === 'content' || key === 'portrait_url' || key === 'senator_name' || key === 'faction' || key === 'rank') &&
+                            data.event_type && data.event_type.includes('Speech')) {
                             continue;
                         }
                         
@@ -585,6 +640,19 @@
                         
                         if (typeof value === 'object') {
                             contentHtml += `<span class="event-data-value">${JSON.stringify(value)}</span>`;
+                        } else if (key === 'portrait_url') {
+                            // Special handling for portrait URLs - display as images
+                            const senatorName = data.data.senator_name || data.source || 'Senator';
+                            const senatorFaction = data.data.faction || '';
+                            contentHtml += `<span class="event-data-value">
+                                <img
+                                    class="senator-portrait"
+                                    src="${value}"
+                                    alt="Portrait of ${senatorName}"
+                                    title="${senatorName}${senatorFaction ? ' of the ' + senatorFaction + ' faction' : ''}"
+                                    onerror="this.onerror=null; this.src='data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'128\' height=\'128\' viewBox=\'0 0 128 128\'%3E%3Ccircle cx=\'64\' cy=\'64\' r=\'64\' fill=\'%23DAA520\' /%3E%3Ccircle cx=\'64\' cy=\'45\' r=\'20\' fill=\'%23FFFFFF\' /%3E%3Cpath d=\'M32 95 C32 75 96 75 96 95 L96 120 L32 120 Z\' fill=\'%23FFFFFF\' /%3E%3C/svg%3E'; console.log('Portrait failed to load:', this.alt);"
+                                >
+                            </span>`;
                         } else {
                             contentHtml += `<span class="event-data-value">${value}</span>`;
                         }

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portrait Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .portrait {
+            width: 200px;
+            height: 200px;
+            margin: 10px;
+            border: 2px solid #DAA520;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .portrait-container {
+            display: inline-block;
+            text-align: center;
+            margin: 15px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Senator Portrait Test</h1>
+    <p>This page tests if the portrait images are correctly served by the server.</p>
+    
+    <div id="portraits">
+        <div class="portrait-container">
+            <img class="portrait" src="/portraits/marcus_cornelius_scipio_optimates.png" alt="Marcus Cornelius Scipio">
+            <div>Marcus Cornelius Scipio</div>
+            <div>Optimates</div>
+        </div>
+        
+        <div class="portrait-container">
+            <img class="portrait" src="/portraits/gaius_julius_caesar_populares.png" alt="Gaius Julius Caesar">
+            <div>Gaius Julius Caesar</div>
+            <div>Populares</div>
+        </div>
+        
+        <div class="portrait-container">
+            <img class="portrait" src="/portraits/lucius_claudius_cicero_neutral.png" alt="Lucius Claudius Cicero">
+            <div>Lucius Claudius Cicero</div>
+            <div>Neutral</div>
+        </div>
+        
+        <div class="portrait-container">
+            <img class="portrait" src="/portraits/publius_valerius_cato_optimates.png" alt="Publius Valerius Cato">
+            <div>Publius Valerius Cato</div>
+            <div>Optimates</div>
+        </div>
+    </div>
+
+    <script>
+        // Log any image loading errors
+        document.querySelectorAll('img').forEach(img => {
+            img.onerror = function() {
+                console.error(`Failed to load image: ${this.src}`);
+                this.style.border = '2px solid red';
+                this.style.backgroundColor = '#ffeeee';
+                this.alt = 'Image failed to load';
+            };
+            
+            img.onload = function() {
+                console.log(`Successfully loaded image: ${this.src}`);
+            };
+        });
+    </script>
+</body>
+</html>

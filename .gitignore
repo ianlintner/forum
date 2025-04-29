@@ -179,3 +179,7 @@ saves/
 src/roman_senate/utils/__pycache__/
 src/roman_senate/utils/__pycache__/__init__.*
 .deprecated/
+portraits/gaius_julius_caesar_populares.png
+portraits/lucius_claudius_cicero_neutral.png
+portraits/marcus_cornelius_scipio_optimates.png
+portraits/publius_valerius_cato_optimates.png
