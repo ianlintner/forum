@@ -155,11 +155,13 @@ class EventSerializer:
         try:
             return json.dumps(event_dict)
         except TypeError as e:
-            logger.error(f"Error serializing event {event.event_type}: {e}")
-            # Try to make data serializable by converting problematic values to strings
+            # Handle serialization errors by converting problematic values to strings
             if 'data' in event_dict and event_dict['data']:
-                event_dict['data'] = {k: str(v) if not isinstance(v, (str, int, float, bool, list, dict, type(None)))
-                                     else v for k, v in event_dict['data'].items()}
+                event_dict['data'] = {
+                    k: str(v) if not isinstance(v, (str, int, float, bool, list, dict, type(None)))
+                    else v for k, v in event_dict['data'].items()
+                }
+            logger.debug(f"Converted non-serializable values in event {event.event_type}")
             return json.dumps(event_dict)
 
 
@@ -240,7 +242,7 @@ async def websocket_endpoint(websocket: WebSocket):
             data = await websocket.receive_text()
             
             try:
-                # Try to parse as JSON
+                # Parse as JSON
                 message = json.loads(data)
                 
                 # Handle different message types
@@ -262,26 +264,15 @@ async def websocket_endpoint(websocket: WebSocket):
                             }
                         })
                     else:
-                        # Echo back unknown message types
+                        # Acknowledge other messages
                         await websocket.send_json({
-                            "type": "echo",
-                            "message": message,
+                            "type": "received",
+                            "original_type": message["type"],
                             "timestamp": datetime.datetime.now().isoformat()
                         })
-                else:
-                    # Echo back non-typed messages
-                    await websocket.send_json({
-                        "type": "echo",
-                        "message": data,
-                        "timestamp": datetime.datetime.now().isoformat()
-                    })
             except json.JSONDecodeError:
-                # For plain text messages
-                await websocket.send_json({
-                    "type": "echo",
-                    "message": data,
-                    "timestamp": datetime.datetime.now().isoformat()
-                })
+                # Ignore non-JSON messages in production
+                pass
     except WebSocketDisconnect:
         websocket_manager.disconnect(websocket)
         logger.info(f"WebSocket connection closed: ID={connection_id}")

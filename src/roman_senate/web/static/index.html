@@ -409,7 +409,7 @@
                             const data = JSON.parse(event.data);
                             handleEvent(data);
                         } catch (error) {
-                            console.error('Error parsing event data:', error);
+                            // Handle parsing errors gracefully
                             addEvent({
                                 type: 'error',
                                 event_type: 'Error',
@@ -441,7 +441,6 @@
                     socket.onerror = function(error) {
                         statusDiv.textContent = 'WebSocket Error';
                         statusDiv.className = 'status disconnected';
-                        console.error('WebSocket Error:', error);
                         
                         addEvent({
                             type: 'error',
@@ -453,7 +452,6 @@
                 } catch (error) {
                     statusDiv.textContent = `Failed to connect: ${error.message}`;
                     statusDiv.className = 'status disconnected';
-                    console.error('Connection Error:', error);
                 }
             });
             
@@ -614,7 +612,7 @@
                                         src="${data.data.portrait_url}"
                                         alt="Portrait of ${senatorName}"
                                         title="${senatorName} of the ${senatorFaction} faction"
-                                        onerror="this.onerror=null; this.src='data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'128\' height=\'128\' viewBox=\'0 0 128 128\'%3E%3Ccircle cx=\'64\' cy=\'64\' r=\'64\' fill=\'%23DAA520\' /%3E%3Ccircle cx=\'64\' cy=\'45\' r=\'20\' fill=\'%23FFFFFF\' /%3E%3Cpath d=\'M32 95 C32 75 96 75 96 95 L96 120 L32 120 Z\' fill=\'%23FFFFFF\' /%3E%3C/svg%3E'; console.log('Portrait failed to load:', this.alt);"
+                                        onerror="this.onerror=null; this.src='data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'128\' height=\'128\' viewBox=\'0 0 128 128\'%3E%3Ccircle cx=\'64\' cy=\'64\' r=\'64\' fill=\'%23DAA520\' /%3E%3Ccircle cx=\'64\' cy=\'45\' r=\'20\' fill=\'%23FFFFFF\' /%3E%3Cpath d=\'M32 95 C32 75 96 75 96 95 L96 120 L32 120 Z\' fill=\'%23FFFFFF\' /%3E%3C/svg%3E';"
                                     >
                                     <div style="text-align: center; font-weight: bold; margin-top: 5px;">${senatorName}</div>
                                     <div style="text-align: center; font-style: italic; font-size: 0.9em;">${senatorFaction}</div>
@@ -650,7 +648,7 @@
                                     src="${value}"
                                     alt="Portrait of ${senatorName}"
                                     title="${senatorName}${senatorFaction ? ' of the ' + senatorFaction + ' faction' : ''}"
-                                    onerror="this.onerror=null; this.src='data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'128\' height=\'128\' viewBox=\'0 0 128 128\'%3E%3Ccircle cx=\'64\' cy=\'64\' r=\'64\' fill=\'%23DAA520\' /%3E%3Ccircle cx=\'64\' cy=\'45\' r=\'20\' fill=\'%23FFFFFF\' /%3E%3Cpath d=\'M32 95 C32 75 96 75 96 95 L96 120 L32 120 Z\' fill=\'%23FFFFFF\' /%3E%3C/svg%3E'; console.log('Portrait failed to load:', this.alt);"
+                                    onerror="this.onerror=null; this.src='data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'128\' height=\'128\' viewBox=\'0 0 128 128\'%3E%3Ccircle cx=\'64\' cy=\'64\' r=\'64\' fill=\'%23DAA520\' /%3E%3Ccircle cx=\'64\' cy=\'45\' r=\'20\' fill=\'%23FFFFFF\' /%3E%3Cpath d=\'M32 95 C32 75 96 75 96 95 L96 120 L32 120 Z\' fill=\'%23FFFFFF\' /%3E%3C/svg%3E';"
                                 >
                             </span>`;
                         } else {

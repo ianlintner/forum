@@ -117,8 +117,8 @@ class PortraitGenerator:
         """
         # Base prompt for Roman senator portraits in KOEI strategy game style
         base_prompt = (
-            f"Create a detailed portrait of Roman Senator {senator_name} of the {faction} faction. "
-            "The style should resemble KOEI strategy game character portraits like those in Romance of the Three Kingdoms - "
+            f"Create a detailed portrait of Roman Senator {senator_name}. "
+            "The style should resemble KOEI strategy game character portraits like those in SNES/PC Era - "
             "elegant, somewhat realistic but stylized ancient portraiture with a serious, dignified expression. "
             "The senator should be wearing a traditional Roman toga with appropriate rank insignia. "
             "The portrait should be a frontal face and upper shoulders view against a textured background. "
@@ -130,21 +130,21 @@ class PortraitGenerator:
         if faction.lower() == "optimates":
             # Conservative aristocrats
             base_prompt += (
-                " As an Optimate senator, he should have a stern, traditional appearance with "
+                "He should have a stern, traditional appearance with "
                 "patrician features, possibly gray hair, and conservative styling. "
                 "Include subtle symbols of wealth and traditional Roman values."
             )
         elif faction.lower() == "populares":
             # Populist reformers
             base_prompt += (
-                " As a Populares senator, he should have a slightly more approachable expression, "
+                "He should have a slightly more approachable expression, "
                 "possibly younger appearance, with a less ostentatious but still dignified style. "
                 "His expression should suggest determination and reformist ideals."
             )
         elif faction.lower() == "neutral":
             # Politically neutral
             base_prompt += (
-                " As a politically neutral senator, he should have a balanced, thoughtful expression "
+                "He should have a balanced, thoughtful expression "
                 "suggesting wisdom and careful deliberation. His appearance should be dignified but "
                 "without strong signals of partisan alignment."
             )
@@ -166,12 +166,12 @@ class PortraitGenerator:
         
         # Check if portrait already exists
         if os.path.exists(portrait_path):
-            logger.info(f"Portrait already exists for {senator_name} ({faction})")
+            logger.debug(f"Portrait already exists for {senator_name} ({faction})")
             return portrait_path
         
         # Generate prompt for DALL-E
         prompt = self.generate_portrait_prompt(senator_name, faction)
-        logger.info(f"Generating portrait for {senator_name} ({faction})")
+        logger.info(f"Generating new portrait for {senator_name} ({faction})")
         
         try:
             # Generate image using DALL-E

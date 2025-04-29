@@ -50,7 +50,6 @@ from src.roman_senate_framework.domains.senate.events.senate_events import (
 )
 from src.roman_senate.web.integration import setup_event_bridge
 from src.roman_senate.web.portrait_server import setup_portrait_endpoints
-from src.roman_senate.web.portrait_testing import setup_portrait_testing_endpoints
 
 # Import the forced speech simulation
 class ForcedSpeechSimulation(SenateSimulation):
@@ -97,11 +96,15 @@ class ForcedSpeechSimulation(SenateSimulation):
             logger.info("Using custom event bus for simulation")
     
     def initialize_senators(self) -> None:
-        """Override to use speech-enabled senators."""
+        """
+        Override to use speech-enabled senators with portrait integration.
+        Creates a set of senators with appropriate names, factions, and ranks,
+        assigning portraits to each senator.
+        """
         # Senator factions
         factions = self.config.get("factions", ["Optimates", "Populares", "Neutral"])
         
-        # Senator names
+        # Senator naming components (traditional Roman naming convention)
         praenomina = ["Marcus", "Gaius", "Lucius", "Publius", "Quintus"]
         nomina = ["Cornelius", "Julius", "Claudius", "Valerius", "Fabius"]
         cognomina = ["Scipio", "Caesar", "Cicero", "Cato", "Brutus"]
@@ -118,19 +121,8 @@ class ForcedSpeechSimulation(SenateSimulation):
             faction = factions[i % len(factions)]
             rank = (i % 5) + 1  # Rank 1-5
             
-            # Generate portrait if we have a portrait generator
-            portrait_url = None
-            if self.portrait_generator:
-                try:
-                    # Generate portrait if it doesn't exist yet
-                    if not self.portrait_generator.portrait_exists(name, faction):
-                        self.portrait_generator.generate_portrait(name, faction)
-                    
-                    # Get the URL for the portrait
-                    portrait_url = self.portrait_generator.get_portrait_url(name, faction)
-                    logger.info(f"Portrait URL for {name}: {portrait_url}")
-                except Exception as e:
-                    logger.error(f"Error generating portrait for {name}: {e}")
+            # Handle portrait generation and retrieval
+            portrait_url = self._get_senator_portrait(name, faction)
             
             # Create speech-enabled senator agent
             senator = SpeechEnabledSenator(
@@ -144,11 +136,37 @@ class ForcedSpeechSimulation(SenateSimulation):
             # Add portrait URL to senator state
             if portrait_url:
                 senator.state["portrait_url"] = portrait_url
+                
             # Add to list and register with agent manager
             self.senators.append(senator)
             self.agent_manager.add_agent(senator)
             
             logger.info(f"Created speech-enabled {faction} senator: {name} (Rank {rank})")
+
+    def _get_senator_portrait(self, senator_name: str, faction: str) -> Optional[str]:
+        """
+        Get or generate a portrait for a senator.
+        
+        Args:
+            senator_name: Name of the senator
+            faction: Political faction of the senator
+            
+        Returns:
+            Optional[str]: URL to the portrait if available, None otherwise
+        """
+        if not self.portrait_generator:
+            return None
+            
+        try:
+            # Generate portrait if it doesn't exist yet
+            if not self.portrait_generator.portrait_exists(senator_name, faction):
+                self.portrait_generator.generate_portrait(senator_name, faction)
+            
+            # Get the URL for the portrait
+            return self.portrait_generator.get_portrait_url(senator_name, faction)
+        except Exception as e:
+            logger.error(f"Error handling portrait for {senator_name}: {e}")
+            return None
             
     async def run_debate(self, topic: str, rounds: int = 3) -> Dict[str, Any]:
         """
@@ -200,22 +218,24 @@ class ForcedSpeechSimulation(SenateSimulation):
                 # Get or decide stance on the topic
                 stance = senator.topic_stances.get(topic, "neutral")
                 
-                logger.info(f"Forcing speech from {senator.name} ({senator.faction}, {stance}) on topic: {topic}")
+                logger.debug(f"Generating speech from {senator.name} ({senator.faction}, {stance}) on topic: {topic}")
                 
                 # Generate speech content using the LLM
                 try:
-                    # Generate speech using the LLM
+                    # Create a structured prompt for more consistent speech generation
                     prompt = f"""Generate a 3-5 sentence speech for Roman Senator {senator.name} of the {senator.faction} faction who {stance}s the topic: "{topic}".
+
+SPECIFICATIONS:
+- Reflect the senator's faction ({senator.faction}), rank ({senator.rank}), and stance ({stance})
+- Include appropriate Latin phrases and rhetorical devices
+- Reference relevant Roman history and politics
+- Maintain a formal oratorical style appropriate for the Roman Senate
+- Conclude with a clear position statement
+
+SPEECH:"""
                     
-                    The speech should reflect the senator's faction ({senator.faction}), rank ({senator.rank}), and stance ({stance}).
-                    
-                    The speech should include appropriate Latin phrases, rhetorical devices, and references to Roman history and politics.
-                    
-                    SPEECH:"""
-                    
-                    # Use sync version for compatibility, but this should be async in production
+                    # Generate the speech content
                     content = senator.llm_provider.generate_completion(prompt)
-                    logger.info(f"Generated LLM speech for {senator.name}")
                     
                     # Create and publish the speech event
                     # Include portrait URL in speech event if available
@@ -242,7 +262,6 @@ class ForcedSpeechSimulation(SenateSimulation):
                     )
                     
                     self.event_bus.publish(speech_event)
-                    logger.info(f"Published speech from {senator.name}")
                     
                     # Update stats for the senator
                     import time
@@ -474,9 +493,8 @@ async def run_integrated_server(host: str = "0.0.0.0", port: int = 8000):
     portraits_dir = os.path.abspath(integrated_server.portraits_dir)
     logger.info(f"Setting up portrait endpoints with directory: {portraits_dir}")
     setup_portrait_endpoints(app, portraits_dir=portraits_dir)
-    setup_portrait_testing_endpoints(app, integrated_server.portrait_generator)
     
-    # Also mount portraits directly as static files as a backup
+    # Mount portraits directly as static files for reliable access
     app.mount("/portraits", StaticFiles(directory=portraits_dir), name="portraits_direct")
     
     # Start the FastAPI server

@@ -6,7 +6,8 @@ Roman Senate AI Game
 Portrait Server
 
 This module provides functionality to serve senator portrait images
-through FastAPI endpoints.
+through FastAPI endpoints. It handles accessing and serving portrait images
+stored in a configured directory.
 """
 
 import os
@@ -32,7 +33,7 @@ def setup_portrait_endpoints(app: FastAPI, portraits_dir: str = "portraits"):
     # Mount the portraits directory as a static files location
     app.mount("/portraits", StaticFiles(directory=portraits_dir), name="portraits")
     
-    logger.info(f"Portrait endpoints set up with directory: {portraits_dir}")
+    logger.info(f"Portrait endpoints configured with directory: {portraits_dir}")
     
     @app.get("/portrait/{senator_name}/{faction}")
     async def get_portrait(senator_name: str, faction: str):
@@ -57,6 +58,6 @@ def setup_portrait_endpoints(app: FastAPI, portraits_dir: str = "portraits"):
         # Check if the portrait exists
         if not os.path.exists(filepath):
             logger.warning(f"Portrait not found: {filepath}")
-            raise HTTPException(status_code=404, detail="Portrait not found")
+            raise HTTPException(status_code=404, detail=f"Portrait not found for senator: {senator_name}")
         
         return FileResponse(filepath)
